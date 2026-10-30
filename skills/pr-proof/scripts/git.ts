@@ -53,6 +53,8 @@ export function changedFiles() {
   // away is still a change to deploy config.
   const committed = output([
     'git',
+    '-c',
+    'core.quotePath=false',
     'diff',
     '--name-only',
     '--no-renames',
@@ -60,6 +62,8 @@ export function changedFiles() {
   ]);
   const uncommitted = output([
     'git',
+    '-c',
+    'core.quotePath=false',
     'status',
     '--porcelain',
     '--untracked-files=all',
