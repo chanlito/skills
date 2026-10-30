@@ -1,6 +1,6 @@
 ---
 name: pr-proof
-description: Prove a web change works with screenshots for its pull request, in every language, light and dark, desktop and phone, before and after, with the change outlined, pointed at and zoomed in on. Use for any change with a screen, before opening or updating a PR.
+description: Prove a web change works with screenshots for its pull request, in every language, light and dark, desktop and phone, before and after, zoomed in on the change and marked only as much as it needs. Use for any change with a screen, before opening or updating a PR.
 ---
 
 # PR proof
@@ -16,12 +16,27 @@ In the commands below, `$SKILL` is this skill's folder (for example `.claude/ski
 ## 2. Shoot
 
 ```sh
-bun $SKILL/scripts/shots.ts <changed pages> --before main --mark '<what changed>' --note '<what to look at>'
+bun $SKILL/scripts/shots.ts <changed pages> --before main --mark '<what changed>'
 ```
 
 It builds the site when the build is older than the code, serves it on 127.0.0.1, and shoots each page in every language, light and dark, at 1280 and 375px. With `--before main` it also builds the latest `origin/main` in a git worktree and shoots the same pages there, and it says which pages are new.
 
-- `--mark '<selector>'` points at the change: it rings the element in every shot, draws an arrow to it with the `--note`, and puts before and after close-ups at the top of each sheet. Give `--mark` more than once for several things. When the element is new, the before close-up shows the same spot.
+- `--mark '<selector>'` says where the change is: it rings the element in every shot and puts before and after close-ups at the top of each sheet. Give `--mark` more than once for several things. When the element is new, the before close-up shows the same spot.
+- `--note '<what to look at>'` adds an arrow to the first mark with the note at its tail.
+- `--no-ring` leaves the shots clean, and `--no-zoom` skips the close-ups.
+
+### Choose how to show it
+
+Show the change with as little drawing as it needs; every extra mark is something the reviewer has to read past. You decide per change:
+
+- **A close-up alone** (`--mark` with `--no-ring`) when the close-up already makes the change obvious: a new button, a reworded heading, a recoloured card.
+- **A ring** (`--mark`) when the change is small on a busy page, so the reviewer finds it in the full-page shots too.
+- **An arrow and a note** (`--mark` with `--note`) only when it's still hard to spot or to tell what changed: a 2px shift, a spacing fix, a subtle colour, one word in a paragraph. The note says what to compare, like `was 2 lines`.
+- **No `--mark` at all** when the whole page is the change (a new page, a redesign).
+- **`--no-zoom`** when you marked something big, like a whole section, and its ring on the full shots already says it.
+
+Then look at the sheet, and if a mark only repeats what's already plain, shoot again without it.
+
 - `--click '<selector>'` shoots after a click (a menu, a dialog, a toggle). `--wait <ms>` waits longer before shooting.
 - `--top` takes only the first screen of a long page.
 - `--langs en`, `--themes light`, `--widths 1280,768` limit what's shot. Skip other languages only when the change has no text.

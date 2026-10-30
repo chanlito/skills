@@ -6,9 +6,11 @@
 //   bun scripts/shots.ts /about/ --before main  before (built from main) and after
 //   bun scripts/shots.ts / --click '#menu'      after clicking something
 //   bun scripts/shots.ts /docs/ --top           only the first screen, not the whole page
+//   bun scripts/shots.ts /about/ --mark '.hero h1'
+//                                               ring what changed and add close-ups of it
 //   bun scripts/shots.ts /about/ --mark '.hero h1' --note 'now wraps'
-//                                               ring what changed, point an arrow at it
-//                                               with the note, and add close-ups of it
+//                                               also point an arrow at it with the note,
+//                                               for a change that's hard to spot
 //   bun scripts/shots.ts /pricing/ --publish    push the sheets to the proof branch
 //                                               and print the Markdown for the PR
 //
@@ -18,7 +20,9 @@
 // pages that need a backend still show what they would. --mark takes any
 // CSS selector and can be given more than once; with --before, the before
 // close-ups show the same spot, so a new element is compared with what was
-// there. Everything lands in .checks/shots/, which ignores itself in git.
+// there. --no-ring keeps the shots clean and --no-zoom skips the close-ups,
+// so only what helps a reviewer goes on the sheet. Everything lands in
+// .checks/shots/, which ignores itself in git.
 
 import {
   cpSync,
@@ -57,6 +61,8 @@ const { values: flags, positionals } = parseArgs({
     click: { type: 'string' },
     mark: { type: 'string', multiple: true },
     note: { type: 'string' },
+    'no-ring': { type: 'boolean' },
+    'no-zoom': { type: 'boolean' },
     wait: { type: 'string', default: '0' },
     before: { type: 'string' },
     build: { type: 'boolean' },
@@ -71,6 +77,17 @@ const langs = flags.langs.split(',');
 const themes = flags.themes.split(',') as ('light' | 'dark')[];
 const widths = flags.widths.split(',').map(Number);
 const asked = positionals.length ? positionals : config().site.pages;
+if (flags.note && !flags.mark) {
+  console.error('--note points at a --mark, so give one too.');
+  process.exit(1);
+}
+const marks = flags.mark ?? [];
+const zooming = marks.length > 0 && !flags['no-zoom'];
+// With nothing to ring, point at or zoom in on, --mark has nothing to do.
+const marking =
+  zooming || (marks.length > 0 && (!flags['no-ring'] || !!flags.note));
+if (marks.length && !marking)
+  console.warn('--no-ring and --no-zoom with no --note leave nothing to mark.');
 
 type Box = { x: number; y: number; width: number; height: number };
 type Shot = {
@@ -98,12 +115,20 @@ async function scrollThrough(page: Page) {
 }
 
 /**
- * Runs in the page. Rings what the selectors match and draws an arrow to the
- * first match, with the note at its tail, above everything else. Returns the
- * area to zoom in on (the first ring, its arrow and the note), or null if
- * nothing matched.
+ * Runs in the page. Rings what the selectors match (unless `ring` is false)
+ * and, when there's a note, draws an arrow to the first match with the note
+ * at its tail, above everything else. Returns the area to zoom in on (the
+ * first match, plus its arrow and note), or null if nothing matched.
  */
-function annotate({ selectors, note }: { selectors: string[]; note?: string }) {
+function annotate({
+  selectors,
+  note,
+  ring,
+}: {
+  selectors: string[];
+  note?: string;
+  ring: boolean;
+}) {
   const INK = '#e5195f';
   const HALO = '#fff';
   const doc = document.documentElement;
@@ -137,56 +162,72 @@ function annotate({ selectors, note }: { selectors: string[]; note?: string }) {
   layer.style.cssText =
     'position:absolute;left:0;top:0;width:0;height:0;z-index:2147483647;pointer-events:none';
   doc.append(layer);
-  for (const b of boxes) {
-    const ring = document.createElement('div');
-    ring.style.cssText = `position:absolute;box-sizing:border-box;left:${b.x}px;top:${b.y}px;width:${b.width}px;height:${b.height}px;border:3px solid ${INK};border-radius:12px;box-shadow:0 0 0 2px ${HALO},inset 0 0 0 2px ${HALO}`;
-    layer.append(ring);
+  for (const b of ring ? boxes : []) {
+    const outline = document.createElement('div');
+    outline.style.cssText = `position:absolute;box-sizing:border-box;left:${b.x}px;top:${b.y}px;width:${b.width}px;height:${b.height}px;border:3px solid ${INK};border-radius:12px;box-shadow:0 0 0 2px ${HALO},inset 0 0 0 2px ${HALO}`;
+    layer.append(outline);
   }
 
-  // The arrow comes in from the side with more room, and from above unless
-  // the mark is near the top. A wide mark gets it at the middle of its edge.
   const target = boxes[0];
-  const right = page.width - (target.x + target.width) > target.x;
-  const above = target.y > 140;
-  const wide = target.width > page.width * 0.6;
-  const head = {
-    x: wide
-      ? target.x + target.width / 2
-      : right
-        ? target.x + target.width + 4
-        : target.x - 4,
-    y: above ? target.y - 4 : target.y + target.height + 4,
-  };
-  const tail = {
-    x: Math.min(
-      Math.max(head.x + (right || wide ? 100 : -100), 24),
-      page.width - 24,
-    ),
-    y: head.y + (above ? -90 : 90),
-  };
-  // A gentle curve: the control point sits off the straight line.
-  const bend = right === above ? 0.25 : -0.25;
-  const [dx, dy] = [head.x - tail.x, head.y - tail.y];
-  const c = {
-    x: (tail.x + head.x) / 2 - dy * bend,
-    y: (tail.y + head.y) / 2 + dx * bend,
-  };
-  const angle = Math.atan2(head.y - c.y, head.x - c.x);
-  const wing = (turn: number) =>
-    `${head.x - 18 * Math.cos(angle + turn)},${head.y - 18 * Math.sin(angle + turn)}`;
-  const d = `M${tail.x},${tail.y} Q${c.x},${c.y} ${head.x},${head.y} M${wing(0.5)} L${head.x},${head.y} L${wing(-0.5)}`;
-  const stroke = (color: string, width: number) =>
-    `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
-  layer.insertAdjacentHTML(
-    'beforeend',
-    `<svg style="position:absolute;left:0;top:0;overflow:visible" width="1" height="1">${stroke(HALO, 9)}${stroke(INK, 4)}</svg>`,
-  );
-  // The close-up is of the first mark, with its arrow and note.
-  let zoom = union(target, { ...tail, width: 1, height: 1 });
+  let zoom = target;
+  // An arrow and a note are for a change that's hard to spot, so they're
+  // only drawn when there's a note.
+  if (note) zoom = arrow(target, note);
 
-  if (note) {
+  // At least 360 by 240 around the middle, so a small mark still shows what
+  // it sits in, and at most a screen and a half tall, so a big one still zooms.
+  const pad = 32;
+  // Near an edge, the room it can't take on one side goes to the other.
+  const grow = (start: number, size: number, min: number, max: number) => {
+    const want = Math.min(max, Math.max(min, size + 2 * pad));
+    const from = Math.min(
+      Math.max(0, start + size / 2 - want / 2),
+      Math.max(0, max - want),
+    );
+    return [from, want];
+  };
+  const [x, width] = grow(zoom.x, zoom.width, 360, page.width);
+  const [y, height] = grow(zoom.y, zoom.height, 240, page.height);
+  return { x, y, width, height: Math.min(height, 1200) };
+
+  /** Draws an arrow to `to` with `text` at its tail; returns the area of all three. */
+  function arrow(to: Box, text: string) {
+    // The arrow comes in from the side with more room, and from above unless
+    // the mark is near the top. A wide mark gets it at the middle of its edge.
+    const right = page.width - (to.x + to.width) > to.x;
+    const above = to.y > 140;
+    const wide = to.width > page.width * 0.6;
+    const head = {
+      x: wide ? to.x + to.width / 2 : right ? to.x + to.width + 4 : to.x - 4,
+      y: above ? to.y - 4 : to.y + to.height + 4,
+    };
+    const tail = {
+      x: Math.min(
+        Math.max(head.x + (right || wide ? 100 : -100), 24),
+        page.width - 24,
+      ),
+      y: head.y + (above ? -90 : 90),
+    };
+    // A gentle curve: the control point sits off the straight line.
+    const bend = right === above ? 0.25 : -0.25;
+    const [dx, dy] = [head.x - tail.x, head.y - tail.y];
+    const c = {
+      x: (tail.x + head.x) / 2 - dy * bend,
+      y: (tail.y + head.y) / 2 + dx * bend,
+    };
+    const angle = Math.atan2(head.y - c.y, head.x - c.x);
+    const wing = (turn: number) =>
+      `${head.x - 18 * Math.cos(angle + turn)},${head.y - 18 * Math.sin(angle + turn)}`;
+    const d = `M${tail.x},${tail.y} Q${c.x},${c.y} ${head.x},${head.y} M${wing(0.5)} L${head.x},${head.y} L${wing(-0.5)}`;
+    const stroke = (color: string, width: number) =>
+      `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    layer.insertAdjacentHTML(
+      'beforeend',
+      `<svg style="position:absolute;left:0;top:0;overflow:visible" width="1" height="1">${stroke(HALO, 9)}${stroke(INK, 4)}</svg>`,
+    );
+    // The close-up is of the first mark, with its arrow and note.
     const label = document.createElement('div');
-    label.textContent = note;
+    label.textContent = text;
     label.style.cssText = `position:absolute;left:0;top:0;width:max-content;max-width:240px;padding:4px 10px;background:${HALO};color:${INK};border:2.5px solid ${INK};border-radius:10px;font:600 16px/1.3 system-ui,sans-serif;rotate:-2deg`;
     layer.append(label);
     const { width, height } = label.getBoundingClientRect();
@@ -198,19 +239,8 @@ function annotate({ selectors, note }: { selectors: string[]; note?: string }) {
     };
     label.style.left = `${box.x}px`;
     label.style.top = `${box.y}px`;
-    zoom = union(zoom, box);
+    return union(union(to, { ...tail, width: 1, height: 1 }), box);
   }
-
-  // At most a screen and a half tall, so marking something big still zooms.
-  const pad = 32;
-  const x = Math.max(0, zoom.x - pad);
-  const y = Math.max(0, zoom.y - pad);
-  return {
-    x,
-    y,
-    width: Math.min(page.width, zoom.x + zoom.width + pad) - x,
-    height: Math.min(page.height, zoom.y + zoom.height + pad, y + 1200) - y,
-  };
 }
 
 /** Where each page's marks were in the after shots, for the before close-ups. */
@@ -231,7 +261,7 @@ async function shoot(
       viewport: { width, height: width < 768 ? 812 : 800 },
       colorScheme: theme,
       // Close-ups are shown bigger than the page, so they need the pixels.
-      deviceScaleFactor: width < 768 || flags.mark ? 2 : 1,
+      deviceScaleFactor: width < 768 || zooming ? 2 : 1,
     });
     const page = await context.newPage();
     try {
@@ -244,10 +274,11 @@ async function shoot(
       await page.waitForTimeout(Number(flags.wait));
       const key = `${path} ${width} ${theme}`;
       let area: Box | null = null;
-      if (flags.mark) {
+      if (marking) {
         area = await page.evaluate(annotate, {
-          selectors: flags.mark,
+          selectors: marks,
           note: flags.note,
+          ring: !flags['no-ring'],
         });
         if (area && side === 'after') marked.set(key, area);
         // Nothing to ring in the before shot (it's new): show the same spot.
@@ -263,7 +294,7 @@ async function shoot(
         scale: width < 768 ? 'device' : 'css',
       });
       const shot: Shot = { path, lang: langOf(path), theme, width, side, file };
-      if (area) {
+      if (area && zooming) {
         const size = await page.evaluate(() => ({
           width: document.documentElement.scrollWidth,
           height: document.documentElement.scrollHeight,
