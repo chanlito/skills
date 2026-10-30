@@ -72,15 +72,19 @@ test('check: an avoided word inside the approved one, or a cluster, is fine', ()
     avoid: new Map([
       ['ប្រើ', 'ប្រើប្រាស់'],
       ['សុ', ''],
+      ['ឡាន', 'រថយន្ត'],
     ]),
+    approved: ['សុខ'],
   };
   expect(check('សូមប្រើប្រាស់កម្មវិធីនេះ។', own)).toEqual([]);
   expect(check('សុខសប្បាយ', own)).toEqual([]);
   expect(check('សូមប្រើវា។', own)[0].text).toBe('ប្រើ');
+  expect(check('ខ្ញុំជិះឡានទៅ', own)[0].text).toBe('ឡាន');
 });
 
 test('check: ZWNJ inside a syllable is not an orphan vowel', () => {
-  expect(check('ក‌ា', style).some((i) => i.level === 'error')).toBe(false);
+  expect(check('ក\u200cា', style)).toEqual([]);
+  expect(check('ខ្ញុំ\u200cទៅ', style)[0].text).toBe('U+200C');
 });
 
 test('check: a number ending a Khmer sentence is still caught', () => {
@@ -99,4 +103,6 @@ test('readGlossary: a Notes column is not an Avoid column', () => {
 test('check: a numbered list marker is not a full stop', () => {
   expect(check('១. ខ្ញុំសរសេរ។', style)).toEqual([]);
   expect(check('## ២. ខ្ញុំសរសេរ។', style)).toEqual([]);
+  expect(check('## ១.២. ចំណងជើង', style)).toEqual([]);
+  expect(check('| ១. | ខ្ញុំ |', style)).toEqual([]);
 });

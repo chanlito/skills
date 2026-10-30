@@ -101,14 +101,17 @@ function clusters(line: string) {
   const out: { chars: number[]; text: string; col: number }[] = [];
   let col = 0;
   let previous = -1;
-  for (const char of line) {
+  const all = [...line];
+  for (const [n, char] of all.entries()) {
     const cp = char.codePointAt(0)!;
     const current = out.at(-1);
     const onKhmer =
       current !== undefined &&
       (isLetter(current.chars[0]) || isMark(current.chars[0]));
     // ZWJ and ZWNJ may sit inside a Khmer syllable, before a vowel.
-    const joiner = cp === 0x200c || cp === 0x200d;
+    const joiner =
+      (cp === 0x200c || cp === 0x200d) &&
+      isMark(all[n + 1]?.codePointAt(0) ?? 0);
     const joins =
       onKhmer && (isMark(cp) || joiner || (previous === COENG && isLetter(cp)));
     if (joins) {
@@ -126,6 +129,8 @@ export type Style = {
   quotes: 'guillemets' | 'any';
   /** Words to avoid, each with what to write instead. */
   avoid: Map<string, string>;
+  /** The glossary's approved words; an avoided word inside one is fine. */
+  approved?: Iterable<string>;
   /** Prose files get the quote and full stop checks; code has its own quotes. */
   prose: boolean;
 };
@@ -213,9 +218,12 @@ export function check(text: string, style: Style): Issue[] {
     const latinLetters = (line.match(/[a-zA-ZÀ-ÿ]/g) ?? []).length;
     if (style.prose && khmerLetters > latinLetters) {
       for (const match of line.matchAll(/[ក-៝0-9០-៩]\.(?=\s|$)/gu)) {
-        // "១. " starting a list item or a heading is numbering, not a sentence.
+        // "១. " or "១.២." starting a list item, heading or table cell is
+        // numbering, not a sentence.
         if (
-          /^\s*(?:[#>*-]+\s*)*[0-9០-៩]+$/.test(line.slice(0, match.index! + 1))
+          /(?:^|\|)\s*(?:[#>*-]+\s*)*[0-9០-៩]+(?:\.[0-9០-៩]+)*$/.test(
+            line.slice(0, match.index! + 1),
+          )
         )
           continue;
         at(
@@ -242,19 +250,20 @@ export function check(text: string, style: Style): Issue[] {
         'a space before ។',
       );
 
-    // Where words start and end, so សុ doesn't match inside សុខ.
-    const edges = new Set<number>([line.length]);
-    for (const part of segmenter.segment(line)) edges.add(part.index);
     for (const [word, instead] of style.avoid) {
-      const better = instead.split(', ').filter(Boolean);
+      const better = [
+        ...instead.split(', ').filter(Boolean),
+        ...(style.approved ?? []),
+      ].filter((w) => w.length > word.length && w.includes(word));
       for (
         let i = line.indexOf(word);
         i >= 0;
         i = line.indexOf(word, i + word.length)
       ) {
-        // Part of a longer word (សុ in សុខ), or of the word to write instead
+        // Half a syllable (សុ before a vowel), or part of an approved word
         // (ប្រើ in ប្រើប្រាស់), isn't the avoided word.
-        if (!edges.has(i) || !edges.has(i + word.length)) continue;
+        const next = line.codePointAt(i + word.length) ?? 0;
+        if (isMark(next) || word.endsWith('\u17d2')) continue;
         const inside = better.some((w) => {
           for (let j = line.indexOf(w); j >= 0; j = line.indexOf(w, j + 1))
             if (j <= i && i + word.length <= j + w.length) return true;

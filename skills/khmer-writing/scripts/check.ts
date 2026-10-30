@@ -42,14 +42,14 @@ const read = (file: string) => {
 const tracked = output(['git', '-c', 'core.quotePath=false', 'ls-files'], top)
   .split('\n')
   .filter(Boolean);
-const missing = named.filter((file) => !existsSync(resolve(top, file)));
+const missing = named.filter((file) => !existsSync(resolve(file)));
 if (missing.length) {
   console.error(`Not found: ${missing.join(', ')}`);
   process.exit(2);
 }
 const files = (
   named.length
-    ? named.map((f) => relative(top, f))
+    ? named.map((f) => relative(top, resolve(f)))
     : (all ? tracked : changedFiles()).filter(matches)
 ).filter((file) => hasKhmer(read(file)));
 
@@ -94,6 +94,7 @@ for (const file of files) {
     numerals: khmer.numerals,
     quotes: khmer.quotes,
     avoid: glossary.avoid,
+    approved: glossary.approved,
     prose: /\.(md|mdx|txt)$/.test(file),
   });
   if (issues.length) console.log(file);
