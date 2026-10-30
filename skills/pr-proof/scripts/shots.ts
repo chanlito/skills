@@ -21,7 +21,8 @@
 // CSS selector and can be given more than once; with --before, the before
 // close-ups show the same spot, so a new element is compared with what was
 // there. --no-ring keeps the shots clean and --no-zoom skips the close-ups,
-// so only what helps a reviewer goes on the sheet. Everything lands in .checks/shots/, which ignores itself in git.
+// so only what helps a reviewer goes on the sheet. Everything lands in
+// .checks/shots/, which ignores itself in git.
 
 import {
   cpSync,
@@ -76,6 +77,13 @@ const langs = flags.langs.split(',');
 const themes = flags.themes.split(',') as ('light' | 'dark')[];
 const widths = flags.widths.split(',').map(Number);
 const asked = positionals.length ? positionals : config().site.pages;
+if (flags.note && !flags.mark) {
+  console.error('--note points at a --mark, so give one too.');
+  process.exit(1);
+}
+// With nothing to ring, point at or zoom in on, --mark has nothing to do.
+const marking =
+  !!flags.mark && (!flags['no-ring'] || flags.note || !flags['no-zoom']);
 
 type Box = { x: number; y: number; width: number; height: number };
 type Shot = {
@@ -162,31 +170,28 @@ function annotate({
   // only drawn when there's a note.
   if (note) zoom = arrow(target, note);
 
-  // At most a screen and a half tall, so marking something big still zooms.
+  // At least 360 by 240 around the middle, so a small mark still shows what
+  // it sits in, and at most a screen and a half tall, so a big one still zooms.
   const pad = 32;
-  const x = Math.max(0, zoom.x - pad);
-  const y = Math.max(0, zoom.y - pad);
-  return {
-    x,
-    y,
-    width: Math.min(page.width, zoom.x + zoom.width + pad) - x,
-    height: Math.min(page.height, zoom.y + zoom.height + pad, y + 1200) - y,
+  const grow = (start: number, size: number, min: number, max: number) => {
+    const extra = Math.max(0, min - size - 2 * pad) / 2;
+    const from = Math.max(0, start - pad - extra);
+    return [from, Math.min(max, start + size + pad + extra) - from];
   };
+  const [x, width] = grow(zoom.x, zoom.width, 360, page.width);
+  const [y, height] = grow(zoom.y, zoom.height, 240, page.height);
+  return { x, y, width, height: Math.min(height, 1200) };
 
-  /** Draws an arrow to `target` with the note at its tail; returns all three's area. */
-  function arrow(target: Box, note: string) {
+  /** Draws an arrow to `to` with `text` at its tail; returns the area of all three. */
+  function arrow(to: Box, text: string) {
     // The arrow comes in from the side with more room, and from above unless
     // the mark is near the top. A wide mark gets it at the middle of its edge.
-    const right = page.width - (target.x + target.width) > target.x;
-    const above = target.y > 140;
-    const wide = target.width > page.width * 0.6;
+    const right = page.width - (to.x + to.width) > to.x;
+    const above = to.y > 140;
+    const wide = to.width > page.width * 0.6;
     const head = {
-      x: wide
-        ? target.x + target.width / 2
-        : right
-          ? target.x + target.width + 4
-          : target.x - 4,
-      y: above ? target.y - 4 : target.y + target.height + 4,
+      x: wide ? to.x + to.width / 2 : right ? to.x + to.width + 4 : to.x - 4,
+      y: above ? to.y - 4 : to.y + to.height + 4,
     };
     const tail = {
       x: Math.min(
@@ -213,24 +218,20 @@ function annotate({
       `<svg style="position:absolute;left:0;top:0;overflow:visible" width="1" height="1">${stroke(HALO, 9)}${stroke(INK, 4)}</svg>`,
     );
     // The close-up is of the first mark, with its arrow and note.
-    let zoom = union(target, { ...tail, width: 1, height: 1 });
-    {
-      const label = document.createElement('div');
-      label.textContent = note;
-      label.style.cssText = `position:absolute;left:0;top:0;width:max-content;max-width:240px;padding:4px 10px;background:${HALO};color:${INK};border:2.5px solid ${INK};border-radius:10px;font:600 16px/1.3 system-ui,sans-serif;rotate:-2deg`;
-      layer.append(label);
-      const { width, height } = label.getBoundingClientRect();
-      const box = {
-        x: Math.min(Math.max(tail.x - width / 2, 8), page.width - width - 8),
-        y: above ? tail.y - height - 4 : tail.y + 4,
-        width,
-        height,
-      };
-      label.style.left = `${box.x}px`;
-      label.style.top = `${box.y}px`;
-      zoom = union(zoom, box);
-    }
-    return zoom;
+    const label = document.createElement('div');
+    label.textContent = text;
+    label.style.cssText = `position:absolute;left:0;top:0;width:max-content;max-width:240px;padding:4px 10px;background:${HALO};color:${INK};border:2.5px solid ${INK};border-radius:10px;font:600 16px/1.3 system-ui,sans-serif;rotate:-2deg`;
+    layer.append(label);
+    const { width, height } = label.getBoundingClientRect();
+    const box = {
+      x: Math.min(Math.max(tail.x - width / 2, 8), page.width - width - 8),
+      y: above ? tail.y - height - 4 : tail.y + 4,
+      width,
+      height,
+    };
+    label.style.left = `${box.x}px`;
+    label.style.top = `${box.y}px`;
+    return union(union(to, { ...tail, width: 1, height: 1 }), box);
   }
 }
 
@@ -252,8 +253,7 @@ async function shoot(
       viewport: { width, height: width < 768 ? 812 : 800 },
       colorScheme: theme,
       // Close-ups are shown bigger than the page, so they need the pixels.
-      deviceScaleFactor:
-        width < 768 || (flags.mark && !flags['no-zoom']) ? 2 : 1,
+      deviceScaleFactor: width < 768 || (marking && !flags['no-zoom']) ? 2 : 1,
     });
     const page = await context.newPage();
     try {
@@ -266,9 +266,9 @@ async function shoot(
       await page.waitForTimeout(Number(flags.wait));
       const key = `${path} ${width} ${theme}`;
       let area: Box | null = null;
-      if (flags.mark) {
+      if (marking) {
         area = await page.evaluate(annotate, {
-          selectors: flags.mark,
+          selectors: flags.mark ?? [],
           note: flags.note,
           ring: !flags['no-ring'],
         });

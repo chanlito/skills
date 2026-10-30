@@ -16,7 +16,7 @@ Take all three, or only the ones you want: `npx skills add chanlito/skills --ski
 
 ## Why
 
-Green checks prove that nothing a test knew about broke. They don't prove the change works. These skills make an agent leave something a person can look at: a contact sheet of the page before and after with the change ringed, a risk tier with its reason, and a PR that puts the preview link where nobody has to look for it.
+Green checks prove that nothing a test knew about broke. They don't prove the change works. These skills make an agent leave something a person can look at: a contact sheet of the page before and after, zoomed in on the change, a risk tier with its reason, and a PR that puts the preview link where nobody has to look for it.
 
 They grew out of building [chanlito.dev](https://chanlito.dev) with agents. The story behind them is in [The scripts I should have written first](https://chanlito.dev/articles/the-scripts-i-should-have-written-first/).
 

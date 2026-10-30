@@ -31,8 +31,9 @@ Show the change with as little drawing as it needs; every extra mark is somethin
 
 - **A close-up alone** (`--mark` with `--no-ring`) when the close-up already makes the change obvious: a new button, a reworded heading, a recoloured card.
 - **A ring** (`--mark`) when the change is small on a busy page, so the reviewer finds it in the full-page shots too.
-- **An arrow and a note** (`--note`) only when it's still hard to spot or to tell what changed: a 2px shift, a spacing fix, a subtle colour, one word in a paragraph. The note says what to compare, like `was 2 lines`.
-- **No marks** when the whole page is the change (a new page, a redesign); `--no-zoom` too if a close-up adds nothing.
+- **An arrow and a note** (`--mark` with `--note`) only when it's still hard to spot or to tell what changed: a 2px shift, a spacing fix, a subtle colour, one word in a paragraph. The note says what to compare, like `was 2 lines`.
+- **No `--mark` at all** when the whole page is the change (a new page, a redesign).
+- **`--no-zoom`** when you marked something big, like a whole section, and its ring on the full shots already says it.
 
 Then look at the sheet, and if a mark only repeats what's already plain, shoot again without it.
 

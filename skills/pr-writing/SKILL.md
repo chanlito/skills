@@ -68,7 +68,7 @@ Pick one, sometimes two, and put each next to the sentence it explains. Keep onl
 
 Show the change working, as a before and an after.
 
-- **Best: screenshots**, for anything with a screen. That's the pr-proof skill: its sheets put before and after side by side with the change ringed. Put a line above each sheet saying what to look at.
+- **Best: screenshots**, for anything with a screen. That's the pr-proof skill: its sheets put before and after side by side, zoomed in on the change. Put a line above each sheet saying what to look at.
 - **Good: something you ran.** The test that failed before and passes now (name it, or sketch it in pseudocode), or the command output before and after.
 - **Not evidence:** "the checks pass" alone. List them, but they only prove nothing a test knew about broke.
 
