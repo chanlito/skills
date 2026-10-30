@@ -9,7 +9,7 @@ npx skills add chanlito/skills
 | Skill          | What it does                                                                                                                                                                                                                            |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **pr-writing** | Checks a branch before every push (branch name, commit format, your project's checks), then writes the PR from your template: the preview link at the top, a small picture of the change, before and after, and how hard it is to undo. |
-| **pr-proof**   | Screenshots each changed page in every language, light and dark, desktop and phone, before and after, with the change outlined, pointed at with a note, and zoomed in on. Then it links them in the PR.                                 |
+| **pr-proof**   | Screenshots each changed page in every language, light and dark, desktop and phone, before and after, zoomed in on the change, with a ring or an arrow and note only when it's hard to spot. Then it links them in the PR.              |
 | **pr-risks**   | Ranks a change Low, Medium or High from the paths it touches, and says which reviews that tier gets.                                                                                                                                    |
 
 Take all three, or only the ones you want: `npx skills add chanlito/skills --skill pr-proof`.
