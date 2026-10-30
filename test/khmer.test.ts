@@ -95,3 +95,8 @@ test('readGlossary: a Notes column is not an Avoid column', () => {
   );
   expect(avoid.size).toBe(0);
 });
+
+test('check: a numbered list marker is not a full stop', () => {
+  expect(check('១. ខ្ញុំសរសេរ។', style)).toEqual([]);
+  expect(check('## ២. ខ្ញុំសរសេរ។', style)).toEqual([]);
+});

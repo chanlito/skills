@@ -212,13 +212,19 @@ export function check(text: string, style: Style): Issue[] {
     const khmerLetters = (line.match(/[\u1780-\u17b3]/gu) ?? []).length;
     const latinLetters = (line.match(/[a-zA-ZÀ-ÿ]/g) ?? []).length;
     if (style.prose && khmerLetters > latinLetters) {
-      for (const match of line.matchAll(/[ក-៝0-9០-៩]\.(?=\s|$)/gu))
+      for (const match of line.matchAll(/[ក-៝0-9០-៩]\.(?=\s|$)/gu)) {
+        // "១. " starting a list item or a heading is numbering, not a sentence.
+        if (
+          /^\s*(?:[#>*-]+\s*)*[0-9០-៩]+$/.test(line.slice(0, match.index! + 1))
+        )
+          continue;
         at(
           [...line.slice(0, match.index)].length + 1,
           'warning',
           '.',
           'a Latin full stop after Khmer; Khmer ends a sentence with ។',
         );
+      }
       if (style.quotes === 'guillemets')
         for (const match of line.matchAll(/["“”](?=[ក-៝])|(?<=[ក-៝។])["“”]/gu))
           at(
