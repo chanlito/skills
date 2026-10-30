@@ -107,8 +107,10 @@ function clusters(line: string) {
     const onKhmer =
       current !== undefined &&
       (isLetter(current.chars[0]) || isMark(current.chars[0]));
+    // ZWJ and ZWNJ may sit inside a Khmer syllable, before a vowel.
+    const joiner = cp === 0x200c || cp === 0x200d;
     const joins =
-      onKhmer && (isMark(cp) || (previous === COENG && isLetter(cp)));
+      onKhmer && (isMark(cp) || joiner || (previous === COENG && isLetter(cp)));
     if (joins) {
       current!.chars.push(cp);
       current!.text += char;
@@ -132,6 +134,8 @@ const KHMER_LETTER = /[ក-៝]/u;
 
 /** A line with this in it isn't checked (for examples of mistakes). */
 export const IGNORE = 'khmer-check: ignore';
+
+const segmenter = new Intl.Segmenter('km', { granularity: 'word' });
 
 /** Every issue in a text, line by line. */
 export function check(text: string, style: Style): Issue[] {
@@ -190,7 +194,8 @@ export function check(text: string, style: Style): Issue[] {
         // Part of a name or a code (3D, 4K, +855, v2, 10%) stays as it is.
         const glued =
           /[A-Za-z+#$€%._:/-]/.test(chars[start - 1] ?? '') ||
-          /[A-Za-z%._:/-]/.test(chars[end] ?? '');
+          /[A-Za-z%_:/-]/.test(chars[end] ?? '') ||
+          /[.,]\d/.test(`${chars[end] ?? ''}${chars[end + 1] ?? ''}`);
         if (!glued && (near(start - 1, -1) || near(end, 1)))
           at(
             start,
@@ -207,7 +212,7 @@ export function check(text: string, style: Style): Issue[] {
     const khmerLetters = (line.match(/[\u1780-\u17b3]/gu) ?? []).length;
     const latinLetters = (line.match(/[a-zA-ZÀ-ÿ]/g) ?? []).length;
     if (style.prose && khmerLetters > latinLetters) {
-      for (const match of line.matchAll(/[ក-៝]\.(?=\s|$)/gu))
+      for (const match of line.matchAll(/[ក-៝0-9០-៩]\.(?=\s|$)/gu))
         at(
           [...line.slice(0, match.index)].length + 1,
           'warning',
@@ -231,23 +236,36 @@ export function check(text: string, style: Style): Issue[] {
         'a space before ។',
       );
 
-    for (const [word, instead] of style.avoid)
+    // Where words start and end, so សុ doesn't match inside សុខ.
+    const edges = new Set<number>([line.length]);
+    for (const part of segmenter.segment(line)) edges.add(part.index);
+    for (const [word, instead] of style.avoid) {
+      const better = instead.split(', ').filter(Boolean);
       for (
         let i = line.indexOf(word);
         i >= 0;
         i = line.indexOf(word, i + word.length)
-      )
+      ) {
+        // Part of a longer word (សុ in សុខ), or of the word to write instead
+        // (ប្រើ in ប្រើប្រាស់), isn't the avoided word.
+        if (!edges.has(i) || !edges.has(i + word.length)) continue;
+        const inside = better.some((w) => {
+          for (let j = line.indexOf(w); j >= 0; j = line.indexOf(w, j + 1))
+            if (j <= i && i + word.length <= j + w.length) return true;
+          return false;
+        });
+        if (inside) continue;
         at(
           [...line.slice(0, i)].length,
           'error',
           word,
           `the glossary says to avoid this${instead ? `; write ${instead}` : ''}`,
         );
+      }
+    }
   });
   return issues;
 }
-
-const segmenter = new Intl.Segmenter('km', { granularity: 'word' });
 
 /** The Khmer words in a text, as the browser splits them. */
 export function words(text: string): string[] {
@@ -294,7 +312,7 @@ export function readGlossary(markdown: string) {
       (c) => c.includes('khmer') || c.includes('ខ្មែរ'),
     );
     const not = header.findIndex(
-      (c) => c.startsWith('avoid') || c.startsWith('not'),
+      (c) => c.startsWith('avoid') || /^(not|don.?t)\b/.test(c),
     );
     const use = khmer >= 0 ? split(row[khmer] ?? '') : [];
     for (const word of use) {

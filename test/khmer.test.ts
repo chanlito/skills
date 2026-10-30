@@ -65,3 +65,33 @@ test('check: digits that belong to a name or code are left alone', () => {
   expect(check('អេក្រង់ 4K និងលេខ +855 ហើយ 3D', style)).toEqual([]);
   expect(check('ទំហំ 32 អ៊ីញ', style)[0].text).toBe('32');
 });
+
+test('check: an avoided word inside the approved one, or a cluster, is fine', () => {
+  const own = {
+    ...style,
+    avoid: new Map([
+      ['ប្រើ', 'ប្រើប្រាស់'],
+      ['សុ', ''],
+    ]),
+  };
+  expect(check('សូមប្រើប្រាស់កម្មវិធីនេះ។', own)).toEqual([]);
+  expect(check('សុខសប្បាយ', own)).toEqual([]);
+  expect(check('សូមប្រើវា។', own)[0].text).toBe('ប្រើ');
+});
+
+test('check: ZWNJ inside a syllable is not an orphan vowel', () => {
+  expect(check('ក‌ា', style).some((i) => i.level === 'error')).toBe(false);
+});
+
+test('check: a number ending a Khmer sentence is still caught', () => {
+  const found = messages('ខ្ញុំធ្វើការអស់រយៈពេល 10.');
+  expect(found.some((m) => m.includes('Latin digits'))).toBe(true);
+  expect(found.some((m) => m.includes('full stop'))).toBe(true);
+});
+
+test('readGlossary: a Notes column is not an Avoid column', () => {
+  const { avoid } = readGlossary(
+    '| English | Khmer | Notes |\n| --- | --- | --- |\n| uncle | ពូ | អ៊ំ |',
+  );
+  expect(avoid.size).toBe(0);
+});

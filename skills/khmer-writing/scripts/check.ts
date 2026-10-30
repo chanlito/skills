@@ -39,7 +39,14 @@ const read = (file: string) => {
   return existsSync(path) ? readFileSync(path, 'utf8') : '';
 };
 
-const tracked = output(['git', 'ls-files'], top).split('\n').filter(Boolean);
+const tracked = output(['git', '-c', 'core.quotePath=false', 'ls-files'], top)
+  .split('\n')
+  .filter(Boolean);
+const missing = named.filter((file) => !existsSync(resolve(top, file)));
+if (missing.length) {
+  console.error(`Not found: ${missing.join(', ')}`);
+  process.exit(2);
+}
 const files = (
   named.length
     ? named.map((f) => relative(top, f))
@@ -52,7 +59,10 @@ const glossary = readGlossary(glossaryText);
 // Words the project already uses: every Khmer word on the base branch, the
 // glossary's approved words, and any word lists.
 const known = new Set(glossary.approved);
-const onBase = output(['git', 'ls-tree', '-r', '--name-only', base], top)
+const onBase = output(
+  ['git', '-c', 'core.quotePath=false', 'ls-tree', '-r', '--name-only', base],
+  top,
+)
   .split('\n')
   .filter((file) => file && matches(file));
 const blobs = spawnSync('git', ['cat-file', '--batch'], {
