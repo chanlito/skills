@@ -85,6 +85,20 @@ export type Config = {
   lessonsDir: string;
   /** Most lessons each skill keeps. */
   maxLessons: number;
+  khmer: {
+    /** The project's Khmer glossary and style choices. */
+    glossary: string;
+    /** Numbers in Khmer prose: "khmer" (១២៣), "latin" (123) or "any". */
+    numerals: 'khmer' | 'latin' | 'any';
+    /** Quotes around Khmer: "guillemets" («»), "any". */
+    quotes: 'guillemets' | 'any';
+    /** Extra word lists (one word per line) that count as known words. */
+    wordlists: string[];
+    /** Files to check when none are named. */
+    files: string[];
+    /** Files never checked, such as examples of typing mistakes. */
+    ignore: string[];
+  };
 };
 
 export const DEFAULTS: Config = {
@@ -147,6 +161,26 @@ export const DEFAULTS: Config = {
   lessons: 'local',
   lessonsDir: '.agents/lessons',
   maxLessons: 12,
+  khmer: {
+    glossary: '.agents/khmer-glossary.md',
+    numerals: 'any',
+    quotes: 'any',
+    wordlists: [],
+    files: [
+      '**/*.md',
+      '**/*.mdx',
+      '**/*.json',
+      '**/*.ts',
+      '**/*.tsx',
+      '**/*.astro',
+      '**/*.vue',
+      '**/*.svelte',
+      '**/*.html',
+      '**/*.yml',
+      '**/*.yaml',
+    ],
+    ignore: [],
+  },
 };
 
 export const CONFIG_FILE = 'show-your-work.json';
