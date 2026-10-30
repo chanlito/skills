@@ -81,9 +81,13 @@ if (flags.note && !flags.mark) {
   console.error('--note points at a --mark, so give one too.');
   process.exit(1);
 }
+const marks = flags.mark ?? [];
+const zooming = marks.length > 0 && !flags['no-zoom'];
 // With nothing to ring, point at or zoom in on, --mark has nothing to do.
 const marking =
-  !!flags.mark && (!flags['no-ring'] || flags.note || !flags['no-zoom']);
+  zooming || (marks.length > 0 && (!flags['no-ring'] || !!flags.note));
+if (marks.length && !marking)
+  console.warn('--no-ring and --no-zoom with no --note leave nothing to mark.');
 
 type Box = { x: number; y: number; width: number; height: number };
 type Shot = {
@@ -173,10 +177,14 @@ function annotate({
   // At least 360 by 240 around the middle, so a small mark still shows what
   // it sits in, and at most a screen and a half tall, so a big one still zooms.
   const pad = 32;
+  // Near an edge, the room it can't take on one side goes to the other.
   const grow = (start: number, size: number, min: number, max: number) => {
-    const extra = Math.max(0, min - size - 2 * pad) / 2;
-    const from = Math.max(0, start - pad - extra);
-    return [from, Math.min(max, start + size + pad + extra) - from];
+    const want = Math.min(max, Math.max(min, size + 2 * pad));
+    const from = Math.min(
+      Math.max(0, start + size / 2 - want / 2),
+      Math.max(0, max - want),
+    );
+    return [from, want];
   };
   const [x, width] = grow(zoom.x, zoom.width, 360, page.width);
   const [y, height] = grow(zoom.y, zoom.height, 240, page.height);
@@ -253,7 +261,7 @@ async function shoot(
       viewport: { width, height: width < 768 ? 812 : 800 },
       colorScheme: theme,
       // Close-ups are shown bigger than the page, so they need the pixels.
-      deviceScaleFactor: width < 768 || (marking && !flags['no-zoom']) ? 2 : 1,
+      deviceScaleFactor: width < 768 || zooming ? 2 : 1,
     });
     const page = await context.newPage();
     try {
@@ -268,7 +276,7 @@ async function shoot(
       let area: Box | null = null;
       if (marking) {
         area = await page.evaluate(annotate, {
-          selectors: flags.mark ?? [],
+          selectors: marks,
           note: flags.note,
           ring: !flags['no-ring'],
         });
@@ -286,7 +294,7 @@ async function shoot(
         scale: width < 768 ? 'device' : 'css',
       });
       const shot: Shot = { path, lang: langOf(path), theme, width, side, file };
-      if (area && !flags['no-zoom']) {
+      if (area && zooming) {
         const size = await page.evaluate(() => ({
           width: document.documentElement.scrollWidth,
           height: document.documentElement.scrollHeight,
