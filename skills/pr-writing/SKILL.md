@@ -1,6 +1,6 @@
 ---
 name: pr-writing
-description: Get a branch ready to push and write its pull request, with the project's checks passing, the preview link at the top, the risk tier, what changed, and the proof. Use before every push and whenever opening or updating a PR.
+description: Get a branch ready to push and write its pull request, with the project's checks passing, the preview link at the top, the risk tier, a small picture of the change, before-and-after evidence, and the merge danger (one-way or two-way door, blast radius). Use before every push and whenever opening or updating a PR.
 ---
 
 # PR writing
@@ -36,16 +36,48 @@ It checks the branch name and the commit subjects against the project's format, 
 bun $SKILL/scripts/body.ts
 ```
 
-It prints the project's PR template (or this skill's `template.md` when there's none) with the preview link and the suggested tier filled in. Then write the rest:
+It prints the project's PR template (or this skill's `template.md` when there's none) with the preview link and the suggested tier filled in. Fill in the rest. Skip preambles and keep the prose short. Use the project's own words for things (its `GLOSSARY.md` if it has one), not names you made up while working. If the repo's template has other sections, fill them in too; don't drop them.
 
 - **Preview link at the very top**, and in your message about the PR too. People shouldn't have to look for it.
 - **Tier** with its one-line reason, and the label. Raise it if pr-risks says paths can't tell.
-- **What changed:** what someone using it would notice, in a few lines. Not a list of files.
-- **Evidence:** the checks that passed, the sheets from pr-proof with a line above each saying what to look at, and for High, what you tried, what you didn't, and how to undo it.
+- **Summary:** one or two sentences on what someone using it would notice, then the smallest picture that makes the point. Not a list of files.
+- **Evidence:** before and after.
+- **Merge danger:** the door and the blast radius.
 - **Review:** what each review round found and what was fixed, and the Skills line (step 6).
-- If the repo's template has other sections, fill them in; don't drop them.
 
 Keep the PR description up to date when the change changes.
+
+### Summary: the smallest picture
+
+Pick one, sometimes two, and put each next to the sentence it explains. Keep only the calls, files, props and states the reviewer needs.
+
+- **Logic** as pseudocode, a **runtime flow** as a call tree, **UI** as a component tree (with the state and module boundaries that matter), a **refactor** as a shallow file tree, or **interactions** as a Mermaid sequence diagram.
+- When the shape already exists and the point is what changed in it, draw the same view as a `diff`:
+
+  ```diff
+   on(save)
+  -  write content
+  +  if content is unchanged
+  +    return cached result
+  +  write new content
+  ```
+
+- Show the whole block instead when most of it is new, or when leaving lines out would hide who owns what or in which order it runs.
+
+### Evidence: before and after
+
+Show the change working, as a before and an after.
+
+- **Best: screenshots**, for anything with a screen. That's the pr-proof skill: its sheets put before and after side by side with the change ringed. Put a line above each sheet saying what to look at.
+- **Good: something you ran.** The test that failed before and passes now (name it, or sketch it in pseudocode), or the command output before and after.
+- **Not evidence:** "the checks pass" alone. List them, but they only prove nothing a test knew about broke.
+
+### Merge danger: the door and the blast radius
+
+- **Door:** two-way when merging can be walked back by reverting (most code), one-way when it can't: a data migration, a deleted record, a sent email, a published package, a renamed public URL or API. Say what makes it one-way, and for a High tier, what you tried, what you didn't, and how to undo what can be undone.
+- **Blast radius:** one word for how far it reaches if it's wrong (`page`, `component`, `site`, `API consumers`, `everyone`), then the ways it could go wrong that a reviewer should check: layout shift, phone widths, other languages, consumers of a changed API, caches, SEO.
+
+A one-way door or a wide blast radius is a reason to raise the tier with pr-risks.
 
 ## 6. Improve this skill
 

@@ -1,18 +1,26 @@
 **Preview:** {{preview}}
 
-## Risk tier
-
 **Tier:** {{tier}}
 
-## What changed
+## Summary
 
-<!-- What a user would notice, in a few lines. -->
+<!-- One or two sentences on what someone using it would notice, then the smallest picture that makes the point: pseudocode, a call tree, a component or file tree, a Mermaid diagram, or a diff of one of those. -->
 
 ## Evidence
 
-<!-- What proves it works: the checks that passed, and screenshots (before and after) for anything with a screen. -->
+<!-- Before and after. Screenshots for anything with a screen (pr-proof), otherwise the test or command that failed before and passes now. -->
+
+**Before:**
+
+**After:**
 
 - [ ] Pre-push checks pass
+
+## Merge danger
+
+**Door:** two-way <!-- or one-way, and what makes it so -->
+
+**Blast radius:** <!-- one word, then what could go wrong and where to look -->
 
 ## Review
 
