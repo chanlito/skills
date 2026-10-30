@@ -60,3 +60,8 @@ test('readGlossary: approved words and words to avoid', () => {
   expect(approved.has('ភ្នាក់ងារ')).toBe(true);
   expect(avoid.get('តំណាង')).toBe('ភ្នាក់ងារ AI');
 });
+
+test('check: digits that belong to a name or code are left alone', () => {
+  expect(check('អេក្រង់ 4K និងលេខ +855 ហើយ 3D', style)).toEqual([]);
+  expect(check('ទំហំ 32 អ៊ីញ', style)[0].text).toBe('32');
+});

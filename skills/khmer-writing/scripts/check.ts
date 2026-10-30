@@ -14,7 +14,8 @@
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { config, glob, root } from './config';
 import { changedFiles, output } from './git';
 import { check, hasKhmer, readGlossary, words } from './khmer';
@@ -24,9 +25,15 @@ const all = args.includes('--all');
 const named = args.filter((a) => !a.startsWith('--'));
 const { base, khmer } = config();
 const top = root();
+// The glossary and this skill are full of wrong Khmer on purpose.
+const self = relative(
+  top,
+  resolve(dirname(fileURLToPath(import.meta.url)), '..'),
+);
+const skip = [...khmer.ignore, khmer.glossary, `${self}/**`];
 const matches = (file: string) =>
   khmer.files.some((g) => glob(g).test(file)) &&
-  !khmer.ignore.some((g) => glob(g).test(file));
+  !skip.some((g) => glob(g).test(file));
 const read = (file: string) => {
   const path = resolve(top, file);
   return existsSync(path) ? readFileSync(path, 'utf8') : '';

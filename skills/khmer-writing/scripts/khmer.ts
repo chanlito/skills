@@ -187,7 +187,11 @@ export function check(text: string, style: Style): Issue[] {
       for (const match of line.matchAll(digits)) {
         const start = [...line.slice(0, match.index)].length;
         const end = start + [...match[0]].length;
-        if (near(start - 1, -1) || near(end, 1))
+        // Part of a name or a code (3D, 4K, +855, v2, 10%) stays as it is.
+        const glued =
+          /[A-Za-z+#$€%._:/-]/.test(chars[start - 1] ?? '') ||
+          /[A-Za-z%._:/-]/.test(chars[end] ?? '');
+        if (!glued && (near(start - 1, -1) || near(end, 1)))
           at(
             start,
             'warning',
