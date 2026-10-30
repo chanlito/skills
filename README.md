@@ -6,11 +6,11 @@ Agent skills for shipping changes you can show your work on. They're for Claude 
 npx skills add chanlito/skills
 ```
 
-| Skill          | What it does                                                                                                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **pr-writing** | Checks a branch before every push (branch name, commit format, your project's checks), then writes the PR from your template with the preview link at the top.                                          |
-| **pr-proof**   | Screenshots each changed page in every language, light and dark, desktop and phone, before and after, with the change outlined, pointed at with a note, and zoomed in on. Then it links them in the PR. |
-| **pr-risks**   | Ranks a change Low, Medium or High from the paths it touches, and says which reviews that tier gets.                                                                                                    |
+| Skill          | What it does                                                                                                                                                                                                                            |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **pr-writing** | Checks a branch before every push (branch name, commit format, your project's checks), then writes the PR from your template: the preview link at the top, a small picture of the change, before and after, and how hard it is to undo. |
+| **pr-proof**   | Screenshots each changed page in every language, light and dark, desktop and phone, before and after, with the change outlined, pointed at with a note, and zoomed in on. Then it links them in the PR.                                 |
+| **pr-risks**   | Ranks a change Low, Medium or High from the paths it touches, and says which reviews that tier gets.                                                                                                                                    |
 
 Take all three, or only the ones you want: `npx skills add chanlito/skills --skill pr-proof`.
 
@@ -19,6 +19,8 @@ Take all three, or only the ones you want: `npx skills add chanlito/skills --ski
 Green checks prove that nothing a test knew about broke. They don't prove the change works. These skills make an agent leave something a person can look at: a contact sheet of the page before and after with the change ringed, a risk tier with its reason, and a PR that puts the preview link where nobody has to look for it.
 
 They grew out of building [chanlito.dev](https://chanlito.dev) with agents. The story behind them is in [The scripts I should have written first](https://chanlito.dev/articles/the-scripts-i-should-have-written-first/).
+
+pr-writing's Summary picture, before-and-after Evidence and Merge danger (the door and the blast radius) are adapted from the [`pr` skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/pr/SKILL.md) in Matt Pocock's [skills](https://github.com/mattpocock/skills) (MIT).
 
 ## They get better as you use them
 
