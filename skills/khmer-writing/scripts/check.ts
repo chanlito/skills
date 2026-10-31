@@ -10,7 +10,7 @@
 // words that are new to the project (not in the base branch, the glossary or
 // the word lists), so the person checks those spellings first.
 //
-// Settings come from "khmer" in show-your-work.json.
+// Settings come from "khmer" in skills.config.json.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

@@ -49,7 +49,7 @@ bun add -d playwright   # or npm i -D playwright
 npx playwright install chromium
 ```
 
-Then add a `show-your-work.json` at the root of your repo. Every field is optional. A site with English at `/` and French at `/fr/`, deployed per branch:
+Then add a `skills.config.json` at the root of your repo. Every field is optional (the old name, `show-your-work.json`, still works). A site with English at `/` and French at `/fr/`, deployed per branch:
 
 ```json
 {

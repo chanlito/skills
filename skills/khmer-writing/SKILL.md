@@ -11,7 +11,7 @@ In the commands below, `$SKILL` is this skill's folder (for example `.claude/ski
 
 ## 1. Read the glossary and the lessons
 
-- The glossary (`khmer.glossary` in `show-your-work.json`, `.agents/khmer-glossary.md` by default) holds the project's words and choices: which terms stay in English, numerals, quotes, register, names. Follow it. If there isn't one, copy this skill's `glossary-template.md` there and fill in what you know; leave the rest for the person.
+- The glossary (`khmer.glossary` in `skills.config.json`, `.agents/khmer-glossary.md` by default) holds the project's words and choices: which terms stay in English, numerals, quotes, register, names. Follow it. If there isn't one, copy this skill's `glossary-template.md` there and fill in what you know; leave the rest for the person.
 - `bun $SKILL/scripts/lessons.ts` prints what earlier changes taught this skill here. Follow them.
 
 ## 2. Write from the meaning
@@ -67,7 +67,7 @@ The glossary is how this skill learns the project's Khmer. Before calling the wo
 
 ## Settings
 
-`khmer` in `show-your-work.json`, all optional:
+`khmer` in `skills.config.json`, all optional:
 
 - `glossary`: the glossary file (default `.agents/khmer-glossary.md`).
 - `numerals`: `"khmer"` (១២៣), `"latin"` (123) or `"any"` (default).
