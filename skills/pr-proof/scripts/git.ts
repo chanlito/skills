@@ -92,7 +92,8 @@ export function treeHash() {
   try {
     if (existsSync(index)) copyFileSync(index, copy);
     const env = { ...process.env, GIT_INDEX_FILE: copy };
-    if (spawnSync('git', ['add', '--all'], { env }).status !== 0) return '';
+    const add = spawnSync('git', ['add', '--all'], { env, stdio: 'ignore' });
+    if (add.status !== 0) return '';
     const tree = spawnSync('git', ['write-tree'], { env, encoding: 'utf8' });
     return tree.status === 0 ? tree.stdout.trim() : '';
   } finally {

@@ -71,6 +71,8 @@ const passed = resolve(
   output(['git', 'rev-parse', '--git-path', 'skills/checks-passed']),
 );
 const tree = c.checks.length ? treeHash() : '';
+if (c.checks.length && !tree)
+  console.log("! git couldn't hash the code, so the checks always run.");
 const stamp = JSON.stringify({ tree, checks: c.checks });
 if (
   tree &&
@@ -88,9 +90,14 @@ else {
   }
   // Only when the checks left the code as they found it: a check that
   // rewrites files (a formatter, codegen) passed on code that's gone now.
-  if (tree && !problems.length && treeHash() === tree) {
-    mkdirSync(dirname(passed), { recursive: true });
-    writeFileSync(passed, stamp);
+  if (tree && !problems.length) {
+    if (treeHash() === tree) {
+      mkdirSync(dirname(passed), { recursive: true });
+      writeFileSync(passed, stamp);
+    } else
+      console.log(
+        "! The checks changed files, so they'll run again next time. Commit or ignore what they write.",
+      );
   }
 }
 

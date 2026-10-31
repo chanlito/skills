@@ -8,7 +8,6 @@ import {
   existsSync,
   readdirSync,
   readFileSync,
-  realpathSync,
   statSync,
 } from 'node:fs';
 import { createServer } from 'node:http';
@@ -30,17 +29,27 @@ const NOT_SOURCE = new Set(['node_modules', '.git']);
 function sourcesChanged(cwd: string) {
   let newest = 0;
   // Links are followed, so a linked folder of content still counts, but
-  // each folder is read once, so a link back up can't loop.
+  // each folder is read once, so a link back up can't loop, and the build
+  // itself never counts as a source.
   const seen = new Set<string>();
+  const built = join(cwd, DIST());
+  if (existsSync(built)) {
+    const stat = statSync(built);
+    seen.add(`${stat.dev}:${stat.ino}`);
+  }
   const visit = (path: string) => {
-    if (!existsSync(path)) return;
-    const stat = statSync(path);
+    let stat;
+    try {
+      stat = statSync(path);
+    } catch {
+      return; // gone, or a broken link
+    }
     // A folder's time changes when a file in it is added, deleted or renamed.
     newest = Math.max(newest, stat.mtimeMs);
     if (!stat.isDirectory()) return;
-    const real = realpathSync(path);
-    if (seen.has(real)) return;
-    seen.add(real);
+    const id = `${stat.dev}:${stat.ino}`;
+    if (seen.has(id)) return;
+    seen.add(id);
     for (const name of readdirSync(path))
       if (!NOT_SOURCE.has(name)) visit(join(path, name));
   };

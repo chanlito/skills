@@ -477,14 +477,17 @@ function publish(files: string[]) {
   const dir = `${CHECKS}/proof`;
   if (existsSync(dir)) run(['git', 'worktree', 'remove', '--force', dir]);
   rmSync(dir, { recursive: true, force: true });
+  // In English whatever the locale, to tell the cases apart.
   const fetched = spawnSync('git', ['fetch', '-q', 'origin', proof], {
     encoding: 'utf8',
+    env: { ...process.env, LC_ALL: 'C' },
   });
+  const why = (fetched.stderr ?? '').trim();
   // On first use the branch isn't there yet, which git calls fatal. Any
   // other failure (offline, signed out) stops here, with git's reason.
   const exists = fetched.status === 0;
-  if (!exists && !/couldn't find remote ref/i.test(fetched.stderr)) {
-    console.error(fetched.stderr.trim() || `git fetch origin ${proof} failed.`);
+  if (!exists && !/couldn't find remote ref/i.test(why)) {
+    console.error(why || `git fetch origin ${proof} failed.`);
     process.exit(1);
   }
   if (exists) {
