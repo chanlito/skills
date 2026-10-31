@@ -19,12 +19,14 @@ test('tier: the highest wins, and agent instructions are never Low', () => {
   expect(tier(['README.md']).tier).toBe('Low');
   expect(tier(['README.md', 'src/app.ts']).tier).toBe('Medium');
   expect(tier(['CLAUDE.md']).tier).toBe('Medium');
-  expect(tier(['.claude/skills/x/SKILL.md']).tier).toBe('Medium');
+  expect(tier(['.claude/settings.json']).tier).toBe('High');
+  expect(tier(['.claude/commands/x.md']).tier).toBe('Medium');
+  expect(tier(['.claude/skills/x/SKILL.md']).tier).toBe('High');
   expect(tier(['docs/a.md', '.github/workflows/ci.yml']).tier).toBe('High');
 });
 
-/** The `commits` setting the scripts see in a fresh repo holding `files`. */
-function commitsWith(files: Record<string, string>) {
+/** What `expr` (over `config()`) gives in a fresh repo holding `files`. */
+function configWith(files: Record<string, string>, expr = 'config().commits') {
   const dir = mkdtempSync(join(tmpdir(), 'skills-config-'));
   spawnSync('git', ['init', '-q'], { cwd: dir });
   for (const [name, body] of Object.entries(files))
@@ -32,28 +34,44 @@ function commitsWith(files: Record<string, string>) {
   const config = join(import.meta.dir, '../shared/config.ts');
   const run = spawnSync(
     'bun',
-    ['-e', `import { config } from '${config}'; console.log(config().commits)`],
+    [
+      '-e',
+      `import { config } from '${config}'; console.log(JSON.stringify(${expr}))`,
+    ],
     { cwd: dir, encoding: 'utf8' },
   );
-  return run.stdout.trim();
+  return JSON.parse(run.stdout);
 }
 
 test('config: .ts wins over .json, which wins over the old name', () => {
   const ts = `export default {\n  // gitmoji, because the team likes it\n  commits: 'gitmoji',\n};\n`;
-  expect(commitsWith({})).toBe('conventional');
-  expect(commitsWith({ 'show-your-work.json': '{"commits":"any"}' })).toBe(
+  expect(configWith({})).toBe('conventional');
+  expect(configWith({ 'show-your-work.json': '{"commits":"any"}' })).toBe(
     'any',
   );
   expect(
-    commitsWith({
+    configWith({
       'show-your-work.json': '{"commits":"any"}',
       'skills.config.json': '{"commits":"x"}',
     }),
   ).toBe('x');
   expect(
-    commitsWith({
+    configWith({
       'skills.config.json': '{"commits":"x"}',
       'skills.config.ts': ts,
     }),
   ).toBe('gitmoji');
+});
+
+test('config: project tiers add to the defaults, unless defaults is false', () => {
+  const high = 'config().tiers.high';
+  const mine = (tiers: string) => ({
+    'skills.config.ts': `export default { tiers: ${tiers} };`,
+  });
+  const added = configWith(mine(`{ high: ['src/billing/**'] }`), high);
+  expect(added).toContain('src/billing/**');
+  expect(added).toContain('.github/workflows/**');
+  expect(
+    configWith(mine(`{ high: ['src/billing/**'], defaults: false }`), high),
+  ).toEqual(['src/billing/**']);
 });

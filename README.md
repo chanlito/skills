@@ -57,12 +57,11 @@ export default {
   commits: 'conventional',
   preview: 'https://{branch}.my-site.pages.dev/',
   tiers: {
+    // Added to the defaults (CI, deploy, secrets, migrations, auth,
+    // dependencies), so only list what's special to this project.
     high: [
-      // Changes what runs in production.
-      'infra/**',
-      '.github/workflows/**',
-      // Sign-in and sessions.
-      'src/auth/**',
+      // Takes people's money.
+      'src/billing/**',
     ],
   },
   site: {
@@ -86,32 +85,33 @@ Every change goes through the pr-writing, pr-risks and pr-proof skills before it
 
 ### All the settings
 
-| Setting                           | Default                                                    | What it is                                                                                    |
-| --------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `base`                            | `origin/main`                                              | What the branch is compared with.                                                             |
-| `checks`                          | `[]`                                                       | Commands that must pass before a push, in order.                                              |
-| `branch.pattern`                  | `type/short-name`                                          | What a branch name should look like (a warning).                                              |
-| `branch.forbid`                   | none                                                       | Branch names that fail the check.                                                             |
-| `commits`                         | `conventional`                                             | `conventional`, `gitmoji` (`✨ feat(scope): message`), `any`, or a regular expression.        |
-| `preview`                         | none                                                       | The preview URL, with `{branch}` as the branch name in dashes.                                |
-| `template`                        | `.github/pull_request_template.md`                         | The PR template. pr-writing has its own for when there's none.                                |
-| `tiers.high` / `medium` / `low`   | CI, migrations, auth / agent files / docs                  | Globs. The highest tier any file calls for wins; anything not Low is Medium.                  |
-| `tiers.reasons` / `reviews`       | see `shared/config.ts`                                     | The words for each tier.                                                                      |
-| `tiers.label`                     | `risk:{tier}`                                              | The PR label, or `""` for none.                                                               |
-| `site.build` / `dist`             | `npm run build` / `dist`                                   | How to build the site and where its pages land.                                               |
-| `site.sources`                    | `src`, `public`, package files                             | What the build reads, to know when to rebuild.                                                |
-| `site.pages`                      | `["/"]`                                                    | What pr-proof shoots when no pages are named.                                                 |
-| `site.languages`                  | `{ "default": "en", "prefixed": [] }`                      | Languages served under `/<lang>/`.                                                            |
-| `site.fakes`                      | `{}`                                                       | Made-up JSON for API paths, by method (`*` for any).                                          |
-| `site.chromium`                   | `[]`                                                       | Extra Chromium flags.                                                                         |
-| `proof.branch`                    | `pr-proof`                                                 | Where screenshots are pushed. Made on first use, with no history of its own.                  |
-| `proof.image`                     | `https://raw.githubusercontent.com/{repo}/{branch}/{path}` | The image link. Private repos need `https://github.com/{repo}/blob/{branch}/{path}?raw=true`. |
-| `lessons`                         | `local`                                                    | `local`, `commit` or `off`.                                                                   |
-| `lessonsDir` / `maxLessons`       | `.agents/lessons` / `12`                                   | Where committed lessons go, and how many each skill keeps.                                    |
-| `khmer.glossary`                  | `.agents/khmer-glossary.md`                                | khmer-writing's glossary. Start from `skills/khmer-writing/glossary-template.md`.             |
-| `khmer.numerals` / `khmer.quotes` | `any` / `any`                                              | `khmer` or `latin` digits in Khmer prose; `guillemets` for «».                                |
-| `khmer.wordlists`                 | `[]`                                                       | Files of known words, one per line.                                                           |
-| `khmer.files` / `khmer.ignore`    | source and content files / `[]`                            | What the Khmer check reads, and what it skips.                                                |
+| Setting                           | Default                                                    | What it is                                                                                          |
+| --------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `base`                            | `origin/main`                                              | What the branch is compared with.                                                                   |
+| `checks`                          | `[]`                                                       | Commands that must pass before a push, in order.                                                    |
+| `branch.pattern`                  | `type/short-name`                                          | What a branch name should look like (a warning).                                                    |
+| `branch.forbid`                   | none                                                       | Branch names that fail the check.                                                                   |
+| `commits`                         | `conventional`                                             | `conventional`, `gitmoji` (`✨ feat(scope): message`), `any`, or a regular expression.              |
+| `preview`                         | none                                                       | The preview URL, with `{branch}` as the branch name in dashes.                                      |
+| `template`                        | `.github/pull_request_template.md`                         | The PR template. pr-writing has its own for when there's none.                                      |
+| `tiers.high` / `medium` / `low`   | CI, deploy, secrets, data, auth, deps / agent files / docs | Globs, added to the defaults. The highest tier any file calls for wins; anything not Low is Medium. |
+| `tiers.defaults`                  | `true`                                                     | `false` to use only your own lists.                                                                 |
+| `tiers.reasons` / `reviews`       | see `shared/config.ts`                                     | The words for each tier.                                                                            |
+| `tiers.label`                     | `risk:{tier}`                                              | The PR label, or `""` for none.                                                                     |
+| `site.build` / `dist`             | `npm run build` / `dist`                                   | How to build the site and where its pages land.                                                     |
+| `site.sources`                    | `src`, `public`, package files                             | What the build reads, to know when to rebuild.                                                      |
+| `site.pages`                      | `["/"]`                                                    | What pr-proof shoots when no pages are named.                                                       |
+| `site.languages`                  | `{ "default": "en", "prefixed": [] }`                      | Languages served under `/<lang>/`.                                                                  |
+| `site.fakes`                      | `{}`                                                       | Made-up JSON for API paths, by method (`*` for any).                                                |
+| `site.chromium`                   | `[]`                                                       | Extra Chromium flags.                                                                               |
+| `proof.branch`                    | `pr-proof`                                                 | Where screenshots are pushed. Made on first use, with no history of its own.                        |
+| `proof.image`                     | `https://raw.githubusercontent.com/{repo}/{branch}/{path}` | The image link. Private repos need `https://github.com/{repo}/blob/{branch}/{path}?raw=true`.       |
+| `lessons`                         | `local`                                                    | `local`, `commit` or `off`.                                                                         |
+| `lessonsDir` / `maxLessons`       | `.agents/lessons` / `12`                                   | Where committed lessons go, and how many each skill keeps.                                          |
+| `khmer.glossary`                  | `.agents/khmer-glossary.md`                                | khmer-writing's glossary. Start from `skills/khmer-writing/glossary-template.md`.                   |
+| `khmer.numerals` / `khmer.quotes` | `any` / `any`                                              | `khmer` or `latin` digits in Khmer prose; `guillemets` for «».                                      |
+| `khmer.wordlists`                 | `[]`                                                       | Files of known words, one per line.                                                                 |
+| `khmer.files` / `khmer.ignore`    | source and content files / `[]`                            | What the Khmer check reads, and what it skips.                                                      |
 
 pr-proof works with anything that builds to static HTML: Astro, Vite, Next.js static export, Eleventy, Hugo. `examples/overflow-check.ts` shows how to write your own page check on its harness.
 
