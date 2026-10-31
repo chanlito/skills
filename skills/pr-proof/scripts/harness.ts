@@ -3,7 +3,14 @@
 // listing its pages, and opening them in Chromium. shots.ts uses it, and a
 // project's own page checks can too (see examples/ in chanlito/skills).
 
-import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { extname, join, resolve, sep } from 'node:path';
@@ -13,19 +20,50 @@ import { sh } from './git';
 
 export const DIST = () => config().site.dist;
 
+/** Folders that are never the site's source, however a source is named. */
+const NOT_SOURCE = new Set(['node_modules', '.git']);
+
 /** When anything the build reads last changed. */
 function sourcesChanged(cwd: string) {
   let newest = 0;
-  const visit = (path: string) => {
+  const visit = (path: string, top: boolean) => {
     if (!existsSync(path)) return;
-    const stat = statSync(path);
+    // Links inside a source aren't followed: a workspace package links its
+    // dependencies, and following them would walk all of node_modules.
+    const stat = top ? statSync(path) : lstatSync(path);
     // A folder's time changes when a file in it is added, deleted or renamed.
     newest = Math.max(newest, stat.mtimeMs);
     if (stat.isDirectory())
-      for (const name of readdirSync(path)) visit(join(path, name));
+      for (const name of readdirSync(path))
+        if (!NOT_SOURCE.has(name)) visit(join(path, name), false);
   };
-  for (const path of config().site.sources) visit(join(cwd, path));
+  for (const path of config().site.sources) visit(join(cwd, path), true);
   return newest;
+}
+
+/**
+ * How to install dependencies in a checkout of the project at `cwd`: the
+ * "site.install" setting, or for a workspace monorepo the install its
+ * lockfile calls for. Empty when borrowing this checkout's node_modules is
+ * enough. A monorepo can't borrow them: its node_modules link its own
+ * packages, so a before build would bundle the branch's code.
+ */
+export function installCommand(cwd = '.') {
+  const { install } = config().site;
+  if (install) return install;
+  const has = (file: string) => existsSync(join(cwd, file));
+  let workspaces = has('pnpm-workspace.yaml');
+  try {
+    const pkg = JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8'));
+    workspaces ||= Boolean(pkg.workspaces);
+  } catch {}
+  if (!workspaces) return '';
+  if (has('bun.lock') || has('bun.lockb'))
+    return 'bun install --frozen-lockfile';
+  if (has('pnpm-lock.yaml')) return 'pnpm install --frozen-lockfile';
+  if (has('yarn.lock')) return 'yarn install --frozen-lockfile';
+  if (has('package-lock.json')) return 'npm ci';
+  return 'npm install';
 }
 
 /** Builds the site when its build is missing or older than its sources (or `force`). */

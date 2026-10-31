@@ -58,6 +58,12 @@ export type Config = {
     dist: string;
     /** What the build reads: when one is newer than the build, it rebuilds. */
     sources: string[];
+    /**
+     * Installs dependencies for the before build, in its worktree. Empty:
+     * a workspace monorepo runs its lockfile's install, anything else
+     * borrows this checkout's node_modules.
+     */
+    install: string;
     /** The pages to shoot when none are named. */
     pages: string[];
     languages: {
@@ -228,6 +234,7 @@ export const DEFAULTS: Config = {
     ],
     pages: ['/'],
     languages: { default: 'en', prefixed: [] },
+    install: '',
     fakes: {},
     chromium: [],
   },

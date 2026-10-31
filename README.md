@@ -100,6 +100,7 @@ Every change goes through the pr-writing, pr-risks and pr-proof skills before it
 | `tiers.label`                     | `risk:{tier}`                                              | The PR label, or `""` for none.                                                                     |
 | `site.build` / `dist`             | `npm run build` / `dist`                                   | How to build the site and where its pages land.                                                     |
 | `site.sources`                    | `src`, `public`, package files                             | What the build reads, to know when to rebuild.                                                      |
+| `site.install`                    | lockfile install in a monorepo                             | How the before build gets its dependencies, in its worktree.                                        |
 | `site.pages`                      | `["/"]`                                                    | What pr-proof shoots when no pages are named.                                                       |
 | `site.languages`                  | `{ "default": "en", "prefixed": [] }`                      | Languages served under `/<lang>/`.                                                                  |
 | `site.fakes`                      | `{}`                                                       | Made-up JSON for API paths, by method (`*` for any).                                                |
