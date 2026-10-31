@@ -76,6 +76,8 @@ export default {
 };
 ```
 
+[`examples/skills.config.ts`](examples/skills.config.ts) is a fuller one, with a comment on why each path is in its tier.
+
 Last, tell your agents to use them, in `AGENTS.md` or `CLAUDE.md`:
 
 ```md
