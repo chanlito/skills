@@ -212,10 +212,12 @@ export const DEFAULTS: Config = {
     },
     reviews: {
       Low: [],
-      Medium: ['code review (/code-review medium), up to 2 rounds'],
+      Medium: [
+        'code review (/code-review medium), up to 2 rounds, a new one only after code fixes',
+      ],
       High: [
-        'code review (/code-review high), up to 3 rounds',
-        'security review (/security-review)',
+        'code review (/code-review high), up to 3 rounds, a new one only after code fixes',
+        'security review (/security-review) of the files that made it High',
         'a person reads the diff',
       ],
     },
@@ -232,9 +234,9 @@ export const DEFAULTS: Config = {
       'bun.lock',
       'pnpm-lock.yaml',
     ],
+    install: '',
     pages: ['/'],
     languages: { default: 'en', prefixed: [] },
-    install: '',
     fakes: {},
     chromium: [],
   },
