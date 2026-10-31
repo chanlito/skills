@@ -1,7 +1,7 @@
 // An example of a project's own page check, built on pr-proof's harness:
 // it fails when a page scrolls sideways on a phone. Copy it next to your
 // code, fix the import to where pr-proof is installed, and add it to
-// "checks" in skills.config.json:
+// "checks" in skills.config.ts:
 //
 //   "checks": ["npm test", "npm run build", "bun scripts/overflow-check.ts"]
 //

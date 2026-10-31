@@ -49,25 +49,31 @@ bun add -d playwright   # or npm i -D playwright
 npx playwright install chromium
 ```
 
-Then add a `skills.config.json` at the root of your repo. Every field is optional (the old name, `show-your-work.json`, still works). A site with English at `/` and French at `/fr/`, deployed per branch:
+Then add a `skills.config.ts` at the root of your repo, so each setting can say why it's there. Every field is optional. `skills.config.json` works too, and so does the old name, `show-your-work.json`. A site with English at `/` and French at `/fr/`, deployed per branch:
 
-```json
-{
-  "checks": ["npm run lint", "npm test", "npm run build"],
-  "commits": "conventional",
-  "preview": "https://{branch}.my-site.pages.dev/",
-  "tiers": {
-    "high": ["infra/**", ".github/workflows/**", "src/auth/**"]
+```ts
+export default {
+  checks: ['npm run lint', 'npm test', 'npm run build'],
+  commits: 'conventional',
+  preview: 'https://{branch}.my-site.pages.dev/',
+  tiers: {
+    high: [
+      // Changes what runs in production.
+      'infra/**',
+      '.github/workflows/**',
+      // Sign-in and sessions.
+      'src/auth/**',
+    ],
   },
-  "site": {
-    "build": "npm run build",
-    "dist": "dist",
-    "pages": ["/", "/pricing/"],
-    "languages": { "default": "en", "prefixed": ["fr"] },
-    "fakes": { "/api/me": { "GET": { "name": "Ada" } } }
+  site: {
+    build: 'npm run build',
+    dist: 'dist',
+    pages: ['/', '/pricing/'],
+    languages: { default: 'en', prefixed: ['fr'] },
+    fakes: { '/api/me': { GET: { name: 'Ada' } } },
   },
-  "lessons": "local"
-}
+  lessons: 'local',
+};
 ```
 
 Last, tell your agents to use them, in `AGENTS.md` or `CLAUDE.md`:
