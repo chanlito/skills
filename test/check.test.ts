@@ -90,6 +90,19 @@ test('check.ts: quick problems first, and no second run on the same code', () =>
   expect(count()).toBe(3);
 });
 
+test('check.ts: a check that rewrites files is run again next time', () => {
+  const runs = join(mkdtempSync(join(tmpdir(), 'skills-runs-')), 'runs');
+  const dir = repo({
+    'skills.config.json': JSON.stringify({
+      checks: [`echo ran >> '${runs}'`, 'date +%s%N > generated.txt'],
+      lessons: 'off',
+    }),
+  });
+  bun(dir, CHECK);
+  bun(dir, CHECK);
+  expect(readFileSync(runs, 'utf8').split('\n').length - 1).toBe(2);
+});
+
 test('installCommand: a workspace monorepo installs, a single package borrows', () => {
   const at = (files: Record<string, string>) => {
     const dir = repo(files);

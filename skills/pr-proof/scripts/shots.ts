@@ -362,6 +362,7 @@ function buildBefore(ref: string) {
   const stamp = JSON.stringify({ sha, command, dist, install });
   if (
     !flags.build &&
+    existsSync(`${kept}/dist`) &&
     existsSync(`${kept}/built-from.json`) &&
     readFileSync(`${kept}/built-from.json`, 'utf8') === stamp
   ) {
@@ -476,10 +477,16 @@ function publish(files: string[]) {
   const dir = `${CHECKS}/proof`;
   if (existsSync(dir)) run(['git', 'worktree', 'remove', '--force', dir]);
   rmSync(dir, { recursive: true, force: true });
-  // Quietly: on first use the branch isn't there, and git calls that fatal.
-  const exists =
-    spawnSync('git', ['fetch', '-q', 'origin', proof], { stdio: 'ignore' })
-      .status === 0;
+  const fetched = spawnSync('git', ['fetch', '-q', 'origin', proof], {
+    encoding: 'utf8',
+  });
+  // On first use the branch isn't there yet, which git calls fatal. Any
+  // other failure (offline, signed out) stops here, with git's reason.
+  const exists = fetched.status === 0;
+  if (!exists && !/couldn't find remote ref/i.test(fetched.stderr)) {
+    console.error(fetched.stderr.trim() || `git fetch origin ${proof} failed.`);
+    process.exit(1);
+  }
   if (exists) {
     if (
       run(['git', 'worktree', 'add', '-q', '--detach', dir, `origin/${proof}`])
@@ -522,7 +529,8 @@ if (publishOnly) {
     tree: string;
     sheets: string[];
   };
-  if (last.tree !== treeHash())
+  const now = treeHash();
+  if (!last.tree || !now || last.tree !== now)
     console.log(
       '! The code changed since these sheets were shot. If that change shows on a page, shoot again first.',
     );
@@ -538,14 +546,16 @@ if (!chosen.length) {
   console.error(`No pages match ${asked.join(' ')}`);
   process.exit(1);
 }
+// Ignores itself, so nothing here ever needs a .gitignore line. Written
+// first, so the before build kept in it never shows up in git.
+mkdirSync(CHECKS, { recursive: true });
+writeFileSync(`${CHECKS}/.gitignore`, '*\n');
 // The before site first: it's the build most likely to fail, so nothing is
 // shot until both sites are ready.
 const beforeDist = flags.before ? buildBefore(flags.before) : '';
 const tree = treeHash();
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(`${OUT}/after`, { recursive: true });
-// Ignores itself, so nothing here ever needs a .gitignore line.
-writeFileSync(`${CHECKS}/.gitignore`, '*\n');
 mkdirSync(`${OUT}/before`, { recursive: true });
 const browser = await launch();
 const after = await serve();
@@ -559,7 +569,8 @@ if (beforeDist) {
     if (!old.has(p)) console.log(`${p} is new: no before shot.`);
   shots.push(...(await shoot(browser, before.url, existed, 'before')));
   before.stop();
-  if (unchanged(shots))
+  // New pages are a change of their own.
+  if (existed.length === chosen.length && unchanged(shots))
     console.log(
       "! Before and after are the same in every shot: the change isn't on these pages, or the build didn't pick it up.",
     );

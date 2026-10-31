@@ -36,7 +36,7 @@ The tier sets the most rounds; what each round finds decides how many you run.
 1. **Round 1, always**, for Medium and High, in a fresh context: not the session that wrote the change, so the reviewer isn't anchored on the author's reasoning.
 2. **Another round only if the last one changed code.** It reviews only the fixes since. Fixes to wording, comments or tests alone don't need one.
 3. **Stop when a round finds nothing real.** If the last round allowed (2 for Medium, 3 for High) still finds real problems, don't patch again: rethink the approach, or hand it to a person with what's left.
-4. **One security review for High**, of the files that made it High (`risk.ts --json` lists them all). Run it again only if a fix touches those files.
+4. **One security review for High**, of what made it High: the files `risk.ts --json` lists, or the new sign-in, permission, payment, secret or outside service when you raised it by judgment. Run it again only if a fix touches those.
 
 Problems in code the change didn't touch become issues, not part of this PR. An agent's approval never counts as a person's.
 

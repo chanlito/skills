@@ -6,9 +6,9 @@
 import {
   createReadStream,
   existsSync,
-  lstatSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   statSync,
 } from 'node:fs';
 import { createServer } from 'node:http';
@@ -20,24 +20,31 @@ import { sh } from './git';
 
 export const DIST = () => config().site.dist;
 
-/** Folders that are never the site's source, however a source is named. */
+/**
+ * Folders that are never the site's source, however a source is named: a
+ * workspace package's node_modules would walk every dependency.
+ */
 const NOT_SOURCE = new Set(['node_modules', '.git']);
 
 /** When anything the build reads last changed. */
 function sourcesChanged(cwd: string) {
   let newest = 0;
-  const visit = (path: string, top: boolean) => {
+  // Links are followed, so a linked folder of content still counts, but
+  // each folder is read once, so a link back up can't loop.
+  const seen = new Set<string>();
+  const visit = (path: string) => {
     if (!existsSync(path)) return;
-    // Links inside a source aren't followed: a workspace package links its
-    // dependencies, and following them would walk all of node_modules.
-    const stat = top ? statSync(path) : lstatSync(path);
+    const stat = statSync(path);
     // A folder's time changes when a file in it is added, deleted or renamed.
     newest = Math.max(newest, stat.mtimeMs);
-    if (stat.isDirectory())
-      for (const name of readdirSync(path))
-        if (!NOT_SOURCE.has(name)) visit(join(path, name), false);
+    if (!stat.isDirectory()) return;
+    const real = realpathSync(path);
+    if (seen.has(real)) return;
+    seen.add(real);
+    for (const name of readdirSync(path))
+      if (!NOT_SOURCE.has(name)) visit(join(path, name));
   };
-  for (const path of config().site.sources) visit(join(cwd, path), true);
+  for (const path of config().site.sources) visit(join(cwd, path));
   return newest;
 }
 

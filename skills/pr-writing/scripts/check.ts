@@ -64,14 +64,20 @@ problems.push(...lessonProblems());
 if (problems.length)
   notReady('The checks did not run: fix these first, then run this again.');
 
-// The code the checks last passed on, and the checks they were.
+// The code the checks last passed on, and the checks they were. Files git
+// ignores (.env, node_modules) aren't part of it: after changing those,
+// --rerun.
 const passed = resolve(
   output(['git', 'rev-parse', '--git-path', 'skills/checks-passed']),
 );
-const stamp = JSON.stringify({ tree: treeHash(), checks: c.checks });
-const same =
-  !rerun && existsSync(passed) && readFileSync(passed, 'utf8') === stamp;
-if (c.checks.length && same)
+const tree = c.checks.length ? treeHash() : '';
+const stamp = JSON.stringify({ tree, checks: c.checks });
+if (
+  tree &&
+  !rerun &&
+  existsSync(passed) &&
+  readFileSync(passed, 'utf8') === stamp
+)
   console.log(
     '✓ The checks already passed on this exact code: skipped (--rerun runs them anyway).',
   );
@@ -80,7 +86,9 @@ else {
     console.log(`\n$ ${line}`);
     if (sh(line) !== 0) problems.push(`${line} failed`);
   }
-  if (c.checks.length && !problems.length) {
+  // Only when the checks left the code as they found it: a check that
+  // rewrites files (a formatter, codegen) passed on code that's gone now.
+  if (tree && !problems.length && treeHash() === tree) {
     mkdirSync(dirname(passed), { recursive: true });
     writeFileSync(passed, stamp);
   }

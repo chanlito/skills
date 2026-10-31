@@ -83,7 +83,8 @@ export function changedFiles() {
  * A hash of the code as it is on disk, committed or not, with untracked
  * files and without ignored ones. It stays the same when only a commit
  * message changes, so a run can tell that nothing it checked has moved.
- * Works on a copy of the index, so what's staged stays as it is.
+ * Works on a copy of the index, so what's staged stays as it is. '' when
+ * git can't tell, which never matches anything.
  */
 export function treeHash() {
   const index = resolve(output(['git', 'rev-parse', '--git-path', 'index']));
@@ -91,10 +92,9 @@ export function treeHash() {
   try {
     if (existsSync(index)) copyFileSync(index, copy);
     const env = { ...process.env, GIT_INDEX_FILE: copy };
-    spawnSync('git', ['add', '--all'], { env });
-    return (
-      spawnSync('git', ['write-tree'], { env, encoding: 'utf8' }).stdout ?? ''
-    ).trim();
+    if (spawnSync('git', ['add', '--all'], { env }).status !== 0) return '';
+    const tree = spawnSync('git', ['write-tree'], { env, encoding: 'utf8' });
+    return tree.status === 0 ? tree.stdout.trim() : '';
   } finally {
     rmSync(copy, { force: true });
   }
