@@ -1,11 +1,11 @@
 ---
 name: pr-writing
-description: Get a branch ready to push and write its pull request, with the project's checks passing, the preview link at the top, the risk tier, a small picture of the change, before-and-after evidence, and the merge danger (one-way or two-way door, blast radius). Use before every push and whenever opening or updating a PR.
+description: Get a branch ready to push and write its pull request, with the project's checks passing, the preview link at the top (when the project has preview deploys), the risk tier, a small picture of the change, before-and-after evidence, and the merge danger (one-way or two-way door, blast radius). Use before every push and whenever opening or updating a PR.
 ---
 
 # PR writing
 
-A pull request is for the person reviewing it, who wasn't there while it was made. They should find the preview link without looking, see how risky it is in one line, and see proof instead of being told it works. This skill checks the branch before a push and writes the PR from the project's template.
+A pull request is for the person reviewing it, who wasn't there while it was made. They should find the preview link without looking (when the project has one), see how risky it is in one line, and see proof instead of being told it works. This skill checks the branch before a push and writes the PR from the project's template.
 
 In the commands below, `$SKILL` is this skill's folder (for example `.claude/skills/pr-writing`). Run them with bun from the repo's root.
 
@@ -23,7 +23,7 @@ Start from an up-to-date base: `git fetch origin main && git switch -c <type>/<w
 bun $SKILL/scripts/check.ts
 ```
 
-It checks the branch name and the commit subjects against the project's format, runs the project's own checks (`checks` in `skills.config.ts`, such as format, type-check, tests and build), and prints the risk tier and the preview link. It must end with `✓ Ready to push.` When it fails, fix the cause and run it again. Don't push around it.
+It checks the branch name and the commit subjects against the project's format, runs the project's own checks (`checks` in `skills.config.ts`, such as format, type-check, tests and build), and prints the risk tier and, when the project has one, the preview link. It must end with `✓ Ready to push.` When it fails, fix the cause and run it again. Don't push around it.
 
 The checks are slow, so a bad branch name or commit subject stops it before they run. Checks that already passed on the exact same code are skipped, so rewording a commit doesn't run them again. Files git ignores, like `.env` or what's inside `node_modules`, aren't part of that: after changing only those, use `--rerun`.
 
@@ -38,9 +38,9 @@ The checks are slow, so a bad branch name or commit subject stops it before they
 bun $SKILL/scripts/body.ts
 ```
 
-It prints the project's PR template (or this skill's `template.md` when there's none) with the preview link and the suggested tier filled in. Fill in the rest. Skip preambles and keep the prose short. Use the project's own words for things (its `GLOSSARY.md` if it has one), not names you made up while working. If the repo's template has other sections, fill them in too; don't drop them.
+It prints the project's PR template (or this skill's `template.md` when there's none) with the suggested tier filled in, and the preview link when `preview` is set in `skills.config.ts`. Without it, the script drops the Preview line. Fill in the rest. Skip preambles and keep the prose short. Use the project's own words for things (its `GLOSSARY.md` if it has one), not names you made up while working. If the repo's template has other sections, fill them in too; don't drop them.
 
-- **Preview link at the very top**, and in your message about the PR too. People shouldn't have to look for it.
+- **Preview link at the very top**, and in your message about the PR too, when the project has preview deploys. People shouldn't have to look for it. When it has none, leave the line out: no `**Preview:** none`.
 - **Tier:** just the tier, like `**Tier:** High`. The label shows on the PR and the reason is in the config, so don't repeat them. Raise it if pr-risks says paths can't tell.
 - **Summary:** one or two sentences on what someone using it would notice, then the smallest picture that makes the point. Not a list of files.
 - **Evidence:** before and after.
@@ -100,5 +100,5 @@ Each lesson is one line about what to do, not the story of what went wrong. Wher
 - `base`: the branch to compare with (`origin/main`).
 - `branch.pattern`: what a branch name should look like (a warning). `branch.forbid`: names that fail, like `"^tmp/"`.
 - `commits`: `"conventional"` (the default), `"gitmoji"` (`✨ feat(scope): message`), `"any"`, or a regular expression.
-- `preview`: the preview deploy URL with `{branch}` as the branch name in dashes, like `"https://{branch}.my-app.pages.dev/"`.
+- `preview`: the preview deploy URL with `{branch}` as the branch name in dashes, like `"https://{branch}.my-app.pages.dev/"`. Optional: leave it out when the project has no preview deploys, and the PR gets no Preview line.
 - `template`: the PR template (`.github/pull_request_template.md`).
