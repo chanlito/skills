@@ -77,21 +77,25 @@ const REGEX_AFTER_WORD = new Set(
   ),
 );
 
+const WORD = 'a word';
+const VALUE = 'a string, template or regular expression';
+const spansLines = (quote: string) => quote.length === 3 || quote === '`';
+
 export function scan(src: string, s: Syntax): Comment[] {
   const out: Comment[] = [];
   const n = src.length;
   let i = 0;
   let line = 1;
-  let prev = '';
-  let prev2 = '';
-  let word = '';
-  const holes: number[] = [];
+  let lastToken = '';
+  let tokenBefore = '';
+  let lastWord = '';
+  const openBracesPerInterpolation: number[] = [];
   let quote = '';
   let regex = 0;
 
-  const mark = (c: string) => {
-    prev2 = prev;
-    prev = c;
+  const mark = (token: string) => {
+    tokenBefore = lastToken;
+    lastToken = token;
   };
   const add = (to: number, text: string, doc: boolean, block: boolean) => {
     const raw = src.slice(i, to);
@@ -123,7 +127,7 @@ export function scan(src: string, s: Syntax): Comment[] {
       .split('\n')
       .map((l) => l.replace(/^\s*\*+ ?/, '').trim())
       .join('\n');
-  const template = () => {
+  const skipTemplate = () => {
     while (i < n) {
       const c = src[i];
       if (c === '\\') {
@@ -134,7 +138,7 @@ export function scan(src: string, s: Syntax): Comment[] {
         return;
       } else if (c === '$' && src[i + 1] === '{') {
         i += 2;
-        holes.push(0);
+        openBracesPerInterpolation.push(0);
         return;
       } else {
         if (c === '\n') line++;
@@ -147,11 +151,11 @@ export function scan(src: string, s: Syntax): Comment[] {
     // "/>" closes a JSX tag.
     if (next === '>') return 0;
     const can =
-      prev === 'a'
-        ? REGEX_AFTER_WORD.has(word)
-        : prev === '>'
-          ? prev2 === '='
-          : prev === '' || '(,=:[!&|?{;+-*%~^'.includes(prev);
+      lastToken === WORD
+        ? REGEX_AFTER_WORD.has(lastWord)
+        : lastToken === '>'
+          ? tokenBefore === '='
+          : lastToken === '' || '(,=:[!&|?{;+-*%~^'.includes(lastToken);
     if (!can) return 0;
     let inClass = false;
     for (let j = i + 1; j < n && src[j] !== '\n'; j++) {
@@ -180,7 +184,7 @@ export function scan(src: string, s: Syntax): Comment[] {
       } else {
         if (c === '\n') {
           line++;
-          if (quote.length === 1 && quote !== '`') quote = '';
+          if (!spansLines(quote)) quote = '';
         }
         i++;
       }
@@ -217,42 +221,44 @@ export function scan(src: string, s: Syntax): Comment[] {
     ) {
       quote = src.slice(i, i + 3);
       i += 3;
-      mark('"');
+      mark(VALUE);
     } else if (c === '"' || c === "'") {
       quote = c;
       i++;
-      mark('"');
+      mark(VALUE);
     } else if (s.raw && c === '`') {
       quote = c;
       i++;
-      mark('"');
+      mark(VALUE);
     } else if (s.js && c === '`') {
       i++;
-      template();
-      mark('"');
-    } else if (s.js && holes.length && c === '{') {
-      holes[holes.length - 1]++;
+      skipTemplate();
+      mark(VALUE);
+    } else if (s.js && openBracesPerInterpolation.length && c === '{') {
+      openBracesPerInterpolation[openBracesPerInterpolation.length - 1]++;
       i++;
       mark(c);
-    } else if (s.js && holes.length && c === '}') {
+    } else if (s.js && openBracesPerInterpolation.length && c === '}') {
       i++;
-      if (holes[holes.length - 1] === 0) {
-        holes.pop();
-        template();
-        mark('"');
+      if (
+        openBracesPerInterpolation[openBracesPerInterpolation.length - 1] === 0
+      ) {
+        openBracesPerInterpolation.pop();
+        skipTemplate();
+        mark(VALUE);
       } else {
-        holes[holes.length - 1]--;
+        openBracesPerInterpolation[openBracesPerInterpolation.length - 1]--;
         mark(c);
       }
     } else if (s.js && c === '/' && (regex = regexEnd())) {
       i = regex;
-      mark('"');
+      mark(VALUE);
     } else if (/[\w$]/.test(c)) {
       let j = i + 1;
       while (j < n && /[\w$]/.test(src[j])) j++;
-      word = src.slice(i, j);
+      lastWord = src.slice(i, j);
       i = j;
-      mark('a');
+      mark(WORD);
     } else {
       mark(c);
       i++;
@@ -261,7 +267,7 @@ export function scan(src: string, s: Syntax): Comment[] {
   return paragraphs(out);
 }
 
-const stands = (text: string) => TOOL.test(text) || SUPPRESSION.test(text);
+const readByTool = (text: string) => TOOL.test(text) || SUPPRESSION.test(text);
 
 function paragraphs(comments: Comment[]) {
   const out: Comment[] = [];
@@ -275,8 +281,8 @@ function paragraphs(comments: Comment[]) {
       c.own &&
       last.doc === c.doc &&
       c.line === last.end + 1 &&
-      !stands(last.text) &&
-      !stands(c.text)
+      !readByTool(last.text) &&
+      !readByTool(c.text)
     ) {
       last.end = c.end;
       last.to = c.to;
@@ -359,11 +365,13 @@ export function bare(src: string, s: Syntax) {
   let code = '';
   let at = 0;
   for (const c of scan(src, s)) {
-    code += src.slice(at, c.from);
-    at = c.to;
+    const before = src.slice(at, c.from);
+    const inJsxBraces =
+      s.js && /\{\s*$/.test(before) && /^\s*\}/.test(src.slice(c.to));
+    code += inJsxBraces ? before.replace(/\{\s*$/, '') : before;
+    at = inJsxBraces ? src.indexOf('}', c.to) + 1 : c.to;
   }
-  code = (code + src.slice(at)).replace(/\s+/g, '');
-  return s.js ? code.replaceAll('{}', '') : code;
+  return (code + src.slice(at)).replace(/\s+/g, '');
 }
 
 type Listed = {

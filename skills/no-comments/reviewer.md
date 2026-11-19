@@ -79,4 +79,4 @@ Flags:
 Not judged: any file or comment you couldn't read, and why
 ```
 
-Every listed comment is in exactly one place: removed, kept under a keep rule, flagged, or not judged.
+Every listed comment is in exactly one place: removed, kept under a keep rule, flagged, or not judged. A flag says whether its comment was deleted or left.

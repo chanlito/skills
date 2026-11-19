@@ -148,6 +148,7 @@ test('bare: the same code with or without its comments', () => {
   expect(bare(withComments, ts)).not.toBe(
     bare(without.replace('a + b', 'a - b'), ts),
   );
+  expect(bare('f({});', ts)).not.toBe(bare('f();', ts));
 });
 
 const git = (dir: string, ...args: string[]) =>
