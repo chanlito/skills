@@ -30,5 +30,15 @@ export default {
       'content/**',
     ],
   },
+  comments: {
+    ignore: [
+      // Written by the API client generator on every build.
+      'src/api/client/**',
+    ],
+    keep: [
+      // Translators read these notes in the message catalog.
+      '^i18n:',
+    ],
+  },
   lessons: 'commit',
 };

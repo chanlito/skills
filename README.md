@@ -11,6 +11,7 @@ npx skills add chanlito/skills
 | **pr-writing**    | Checks a branch before every push (branch name, commit format, your project's checks), then writes the PR from your template: the preview link at the top (if you have preview deploys), a small picture of the change, before and after, and how hard it is to undo.                               |
 | **pr-proof**      | Screenshots each changed page in every language, light and dark, desktop and phone, before and after, zoomed in on the change, with a ring or an arrow and note only when it's hard to spot. Then it links them in the PR.                                                                          |
 | **pr-risks**      | Ranks a change Low, Medium or High from the paths it touches, and says which reviews that tier gets.                                                                                                                                                                                                |
+| **no-comments**   | Hands a change's comments to a reviewer who didn't write them. What the code already says is deleted, a comment that explained something odd becomes a fix to the code, and one that stated a rule ("do not remove") becomes a type or a test.                                                      |
 | **khmer-writing** | Writes and translates Khmer from the meaning instead of word for word, follows your project's Khmer glossary, then checks the text for typing mistakes that look right but break search, words the glossary avoids, and words that are new to the project, so a native speaker only reads for tone. |
 
 Take them all, or only the ones you want: `npx skills add chanlito/skills --skill pr-proof`.
@@ -22,6 +23,8 @@ Green checks prove that nothing a test knew about broke. They don't prove the ch
 They grew out of building [chanlito.dev](https://chanlito.dev) with agents. The story behind them is in [The scripts I should have written first](https://chanlito.dev/articles/the-scripts-i-should-have-written-first/).
 
 pr-writing's Summary picture, before-and-after Evidence and Merge danger (the door and the blast radius) are adapted from the [`pr` skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/pr/SKILL.md) in Matt Pocock's [skills](https://github.com/mattpocock/skills) (MIT).
+
+no-comments is adapted from the [`no-comments` skill](https://github.com/cursor/plugins/blob/main/pstack/skills/no-comments/SKILL.md) and its Comment Sicko reviewer in [pstack](https://github.com/cursor/plugins/tree/main/pstack) (MIT): the reviewer with fresh eyes and a short keep list, and turning a rule in a comment into something that enforces it.
 
 ## They get better as you use them
 
@@ -80,7 +83,7 @@ export default {
 Last, tell your agents to use them, in `AGENTS.md` or `CLAUDE.md`:
 
 ```md
-Every change goes through the pr-writing, pr-risks and pr-proof skills before its PR.
+Every change goes through the pr-writing, pr-risks and pr-proof skills before its PR, and the no-comments skill before its review.
 ```
 
 ### All the settings
@@ -109,6 +112,8 @@ Every change goes through the pr-writing, pr-risks and pr-proof skills before it
 | `proof.image`                     | `https://raw.githubusercontent.com/{repo}/{branch}/{path}` | The image link. Private repos need `https://github.com/{repo}/blob/{branch}/{path}?raw=true`.        |
 | `lessons`                         | `local`                                                    | `local`, `commit` or `off`.                                                                          |
 | `lessonsDir` / `maxLessons`       | `.agents/lessons` / `12`                                   | Where committed lessons go, and how many each skill keeps.                                           |
+| `comments.ignore`                 | generated and vendored code                                | Globs of files whose comments no-comments leaves alone, added to the defaults.                       |
+| `comments.keep`                   | `[]`                                                       | Regular expressions for comments a tool or a project rule reads, like `^i18n:`.                      |
 | `khmer.glossary`                  | `.agents/khmer-glossary.md`                                | khmer-writing's glossary. Start from `skills/khmer-writing/glossary-template.md`.                    |
 | `khmer.numerals` / `khmer.quotes` | `any` / `any`                                              | `khmer` or `latin` digits in Khmer prose; `guillemets` for «».                                       |
 | `khmer.wordlists`                 | `[]`                                                       | Files of known words, one per line.                                                                  |
