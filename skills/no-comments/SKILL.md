@@ -34,7 +34,7 @@ When it lists none, report `Comments: none added` (step 7) and stop here.
 
 Start the reviewer in a fresh context: a subagent that hasn't seen this session, the way pr-risks runs its first review. Give it two things: this skill's `reviewer.md` as its instructions, and the scope (the branch, or the paths you named). It judges each comment from the code, without your reasons for writing it.
 
-`reviewer.md` holds the rules: what stays (the keep rules), what goes, and what becomes a flag. The reviewer deletes comments, leaves the code as it is, and returns a report: what it removed, what it kept and under which keep rule, and its flags.
+`reviewer.md` holds the rules: what stays (the keep rules), what goes, and what becomes a flag. The reviewer deletes comments, leaves the code as it is and its deletions uncommitted, and returns a report: what it removed, what it kept and under which keep rule, and its flags.
 
 ## 4. Check its work
 
@@ -42,7 +42,7 @@ Start the reviewer in a fresh context: a subagent that hasn't seen this session,
 bun $SKILL/scripts/comments.ts --only-comments
 ```
 
-It fails when anything but comments changed since the last commit, and names the files. Undo the code edits it names. Then read the report against `reviewer.md`:
+It fails when more than comments and spacing changed since the last commit, and names the files. Read `git diff` for each one and undo any edit to code. The script reads code the way a highlighter does, so a deleted comment can leave something behind that it takes for a code change, like an empty pair of braces: when the diff shows only comments went, carry on. Then read the report against `reviewer.md`:
 
 - **Kept, and no keep rule fits:** delete it.
 - **Deleted, though a keep rule fits** (a licence header, a line a tool reads): put it back.

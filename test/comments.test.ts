@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
   bare,
+  sameCode,
   scan,
   syntaxOf,
   tags,
@@ -30,18 +31,21 @@ test('scan: finds comments, and not what only looks like one', () => {
     '   on two lines */',
     'const jsx = <a href="//cdn">http://example.com {/* in JSX */}</a>;',
     'const done = <br />; // after a tag',
+    "const text = <p>Don't {/* after an apostrophe */}</p>;",
   ].join('\n');
   expect(texts('a.tsx', src)).toEqual([
     'the real one',
     'a block\non two lines',
     'in JSX',
     'after a tag',
+    'after an apostrophe',
   ]);
   expect(read('a.tsx', src).map((c) => [c.line, c.end])).toEqual([
     [1, 1],
     [5, 6],
     [7, 7],
     [8, 8],
+    [9, 9],
   ]);
 });
 
@@ -86,6 +90,12 @@ test('scan: other languages', () => {
     'real',
   ]);
   expect(texts('a.html', '<p>Hi</p> <!-- note -->')).toEqual(['note']);
+  expect(
+    texts('a.scss', 'a { background: url(//cdn/x.png); } // tint'),
+  ).toEqual(['tint']);
+  expect(
+    texts('a.rs', "struct S<'a> { // one lifetime\n  x: &'a str, // field\n}"),
+  ).toEqual(['one lifetime', 'field']);
   expect(syntaxOf('notes.md')).toBeNull();
   expect(syntaxOf('Dockerfile.dev')).toEqual({ line: '#' });
 });
@@ -129,26 +139,46 @@ test('tags: what each comment looks like', () => {
   ]);
   const [bang] = read('a.sh', '#!/usr/bin/env bash\n');
   expect(tags(bang)).toEqual(['tool']);
-  const [note] = read('a.ts', '// i18n: shown on the receipt');
-  expect(tags(note, [/^i18n:/])).toEqual(['tool']);
+  const [crate] = read('lib.rs', '//! Crate docs.\n');
+  expect(tags(crate)).toEqual([]);
+  const keep = [/^i18n:/];
+  const notes = scan(
+    '// Shown on the receipt.\n// i18n: label\nconst a = 1;',
+    syntaxOf('a.ts')!,
+    keep,
+  );
+  expect(notes.map((c) => tags(c, keep).join(','))).toEqual(['', 'tool']);
 });
 
 test('bare: the same code with or without its comments', () => {
-  const ts = syntaxOf('a.tsx')!;
+  const same = (file: string, before: string, now: string) =>
+    sameCode(bare(before, syntaxOf(file)!), bare(now, syntaxOf(file)!));
   const withComments = [
     '// Adds.',
     'function add(a: number, b: number) {',
     '  return a + b; /* sum */',
     '}',
     'const el = <p>{/* gone */}hi</p>;',
+    'try { add(1, 2); } catch {',
+    '  // ignore',
+    '}',
   ].join('\n');
   const without =
-    'function add(a: number, b: number) { return a + b; }\nconst el = <p>hi</p>;';
-  expect(bare(withComments, ts)).toBe(bare(without, ts));
-  expect(bare(withComments, ts)).not.toBe(
-    bare(without.replace('a + b', 'a - b'), ts),
+    'function add(a: number, b: number) { return a + b; }\nconst el = <p>hi</p>;\ntry { add(1, 2); } catch {}';
+  expect(same('a.tsx', withComments, without)).toBe(true);
+  expect(same('a.tsx', withComments, withComments)).toBe(true);
+  expect(same('a.tsx', withComments, without.replace('a + b', 'a - b'))).toBe(
+    false,
   );
-  expect(bare('f({});', ts)).not.toBe(bare('f();', ts));
+  expect(same('a.tsx', 'f({});', 'f();')).toBe(false);
+  expect(same('a.tsx', 'f(); // x', 'f(); g();')).toBe(false);
+
+  const py =
+    'def f(a):\n    if a:\n        x()\n        # then y\n        y()\n';
+  expect(same('a.py', py, py.replace('        # then y\n', ''))).toBe(true);
+  expect(
+    same('a.py', py, py.replace('        # then y\n        y()', '    y()')),
+  ).toBe(false);
 });
 
 const git = (dir: string, ...args: string[]) =>
@@ -215,6 +245,31 @@ test('comments.ts: lists only what the branch changed, by config', () => {
     'i18n: label',
   ]);
   expect(run(dir, 'src').stdout).toContain('in these files');
+
+  const typo = run(dir, 'src/nope.ts');
+  expect(typo.status).toBe(1);
+  expect(typo.stderr).toContain('No files here match');
+  expect(run(dir, '--help').status).toBe(1);
+});
+
+test('comments.ts: a moved file lists only the comments added to it', () => {
+  const dir = repo({
+    'skills.config.json': JSON.stringify({ lessons: 'off' }),
+    'src/a.ts':
+      '// Old one.\nexport const a = 1;\n// Old two.\nexport const b = 2;\n',
+  });
+  git(dir, 'mv', 'src/a.ts', 'src/b.ts');
+  write(dir, {
+    'src/b.ts':
+      '// Old one.\nexport const a = 1;\n// Old two.\nexport const b = 2;\n// New.\n',
+  });
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'refactor: move a');
+  git(dir, 'config', 'color.ui', 'always');
+  const out = run(dir).stdout;
+  expect(out).toContain('New.');
+  expect(out).not.toContain('Old');
+  expect(out).toContain('1 comment on lines this branch changed, in 1 file');
 });
 
 test('comments.ts --only-comments: passes on comments, fails on code', () => {

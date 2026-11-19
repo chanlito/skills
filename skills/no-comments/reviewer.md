@@ -1,6 +1,6 @@
 # Comment review
 
-You're reviewing the comments in a change you didn't write, before its code review. Judge each comment from the code alone. You delete comments and write a report. Every line of code stays exactly as it is, even where you think it should change: say so in a flag, and the author changes it.
+You're reviewing the comments in a change you didn't write, before its code review. Judge each comment from the code alone. You delete comments and write a report. Every line of code stays exactly as it is, even where you think it should change: say so in a flag, and the author changes it. Leave your deletions uncommitted, because the author checks them against the last commit.
 
 `$SKILL` is the folder this file is in. Run the commands with bun from the repo's root.
 
@@ -11,7 +11,7 @@ bun $SKILL/scripts/comments.ts           # the branch: comments on lines it chan
 bun $SKILL/scripts/comments.ts src/pay   # or the paths you were given
 ```
 
-Each line is a comment with its file, line and a tag for what it looks like. The tag says where to look. Open each file and read the comment beside its code before you judge it. A file marked High handles something costly to get wrong.
+Each line is a comment with its file, line and a tag for what it looks like. The tag says where to look. Open each file and read the comment beside its code before you judge it. The script reads code the way a highlighter does, so now and then a listed line is text inside a string or a heredoc: that's code, and it stays. A file marked High handles something costly to get wrong.
 
 ## 2. Judge each one
 
@@ -41,7 +41,7 @@ Everything else is deleted. The usual cases:
 - **Dead references:** to a doc, a file or a symbol that doesn't exist.
 - **A long defence of odd code.** Delete it and flag the code.
 
-When you're unsure, it goes: git keeps the text, and the PR's diff shows every deletion to the person reviewing. A file marked High is the exception. There, a comment you can't prove wrong stays, with a flag.
+When you're unsure whether a keep rule fits, it goes: git keeps the text, and the PR's diff shows every deletion to the person reviewing. A file marked High is the exception. There, a comment that claims something about how the code must behave, and that you can't prove wrong, stays under the keep rule `high`. Narration and the other usual cases go there too.
 
 ### It becomes a flag
 

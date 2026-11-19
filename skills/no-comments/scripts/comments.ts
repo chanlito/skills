@@ -79,9 +79,16 @@ const REGEX_AFTER_WORD = new Set(
 
 const WORD = 'a word';
 const VALUE = 'a string, template or regular expression';
-const spansLines = (quote: string) => quote.length === 3 || quote === '`';
 
-export function scan(src: string, s: Syntax): Comment[] {
+/**
+ * The comments in a file. `standalone` lines are never joined to the
+ * comment lines around them.
+ */
+export function scan(
+  src: string,
+  s: Syntax,
+  standalone: RegExp[] = [],
+): Comment[] {
   const out: Comment[] = [];
   const n = src.length;
   let i = 0;
@@ -90,7 +97,7 @@ export function scan(src: string, s: Syntax): Comment[] {
   let tokenBefore = '';
   let lastWord = '';
   const openBracesPerInterpolation: number[] = [];
-  let quote = '';
+  let multilineQuote = '';
   let regex = 0;
 
   const mark = (token: string) => {
@@ -146,6 +153,13 @@ export function scan(src: string, s: Syntax): Comment[] {
       }
     }
   };
+  const stringEnd = () => {
+    for (let j = i + 1; j < n && src[j] !== '\n'; j++) {
+      if (src[j] === '\\') j++;
+      else if (src[j] === src[i]) return j + 1;
+    }
+    return 0;
+  };
   const regexEnd = () => {
     const next = src[i + 1];
     // "/>" closes a JSX tag.
@@ -174,18 +188,15 @@ export function scan(src: string, s: Syntax): Comment[] {
 
   while (i < n) {
     const c = src[i];
-    if (quote) {
+    if (multilineQuote) {
       if (c === '\\') {
         if (src[i + 1] === '\n') line++;
         i += 2;
-      } else if (src.startsWith(quote, i)) {
-        i += quote.length;
-        quote = '';
+      } else if (src.startsWith(multilineQuote, i)) {
+        i += multilineQuote.length;
+        multilineQuote = '';
       } else {
-        if (c === '\n') {
-          line++;
-          if (!spansLines(quote)) quote = '';
-        }
+        if (c === '\n') line++;
         i++;
       }
       continue;
@@ -198,10 +209,11 @@ export function scan(src: string, s: Syntax): Comment[] {
       s.line &&
       src.startsWith(s.line, i) &&
       // "#" in the middle of a word is "${#items}" or a colour, and "//"
-      // after a colon is a URL in text.
+      // after a colon or "url(" is an address.
       (s.line === '#'
         ? i === 0 || /\s/.test(src[i - 1])
-        : s.line !== '//' || src[i - 1] !== ':')
+        : s.line !== '//' ||
+          (src[i - 1] !== ':' && src.slice(i - 4, i) !== 'url('))
     ) {
       const newline = src.indexOf('\n', i);
       const to = newline < 0 ? n : newline;
@@ -219,15 +231,16 @@ export function scan(src: string, s: Syntax): Comment[] {
       s.triple &&
       (src.startsWith('"""', i) || src.startsWith("'''", i))
     ) {
-      quote = src.slice(i, i + 3);
+      multilineQuote = src.slice(i, i + 3);
       i += 3;
       mark(VALUE);
     } else if (c === '"' || c === "'") {
-      quote = c;
-      i++;
-      mark(VALUE);
+      // An apostrophe in text, or a lifetime, has no closing quote.
+      const closed = stringEnd();
+      i = closed || i + 1;
+      mark(closed ? VALUE : c);
     } else if (s.raw && c === '`') {
-      quote = c;
+      multilineQuote = c;
       i++;
       mark(VALUE);
     } else if (s.js && c === '`') {
@@ -264,12 +277,11 @@ export function scan(src: string, s: Syntax): Comment[] {
       i++;
     }
   }
-  return paragraphs(out);
+  return paragraphs(out, [TOOL, SUPPRESSION, ...standalone]);
 }
 
-const readByTool = (text: string) => TOOL.test(text) || SUPPRESSION.test(text);
-
-function paragraphs(comments: Comment[]) {
+function paragraphs(comments: Comment[], standalone: RegExp[]) {
+  const alone = (text: string) => standalone.some((re) => re.test(text));
   const out: Comment[] = [];
   for (const c of comments) {
     const last = out[out.length - 1];
@@ -281,8 +293,8 @@ function paragraphs(comments: Comment[]) {
       c.own &&
       last.doc === c.doc &&
       c.line === last.end + 1 &&
-      !readByTool(last.text) &&
-      !readByTool(c.text)
+      !alone(last.text) &&
+      !alone(c.text)
     ) {
       last.end = c.end;
       last.to = c.to;
@@ -307,6 +319,7 @@ export type Tag =
 
 const TOOL =
   /prettier-ignore|^<(reference|amd-)|webpack[A-Z]\w+:|@vite-ignore|[#@]__(PURE|NO_SIDE_EFFECTS)__|^#?(end)?region\b|statement-breakpoint|khmer-check: ignore|@(jsx|jsxImportSource|jsxRuntime|jsxFrag|ts-check|flow|generated|vitest-environment|jest-environment)\b|sourceMappingURL=|^syntax=|-\*-.*-\*-|yaml-language-server:|^cspell:|^eslint-env\b|shellcheck (shell|source)=|^go:(build|generate|embed)\b/;
+const SHEBANG = /^!\s*\//;
 const SUPPRESSION =
   /eslint-(disable|enable)|@ts-(ignore|expect-error|nocheck)|biome-ignore|oxlint-disable|deno-lint-ignore|stylelint-disable|\bnoqa\b|type:\s*ignore|pylint:\s*disable|rubocop:\s*disable|shellcheck disable=|\bnolint\b|\bnosec\b|NOSONAR|(istanbul|c8|v8) ignore|pragma: no cover|phpcs:(ignore|disable)/;
 const LICENSE =
@@ -341,7 +354,7 @@ export function tags(c: Comment, keep: RegExp[] = []): Tag[] {
   if (
     keep.some((re) => re.test(t)) ||
     TOOL.test(t) ||
-    (c.line === 1 && t.startsWith('!'))
+    (c.line === 1 && SHEBANG.test(t))
   )
     return ['tool'];
   if (SUPPRESSION.test(t)) return ['suppression'];
@@ -360,18 +373,43 @@ export function tags(c: Comment, keep: RegExp[] = []): Tag[] {
   return found;
 }
 
-/** The code with its comments and its spacing taken out. */
+const BRACED_COMMENT = '\u0000';
+
+/**
+ * The code with its comments taken out, and its spacing too, except the
+ * indentation of a language that reads it. A comment alone in braces
+ * becomes a mark, since deleting a JSX comment takes its braces with it.
+ */
 export function bare(src: string, s: Syntax) {
   let code = '';
   let at = 0;
   for (const c of scan(src, s)) {
     const before = src.slice(at, c.from);
-    const inJsxBraces =
+    const braced =
       s.js && /\{\s*$/.test(before) && /^\s*\}/.test(src.slice(c.to));
-    code += inJsxBraces ? before.replace(/\{\s*$/, '') : before;
-    at = inJsxBraces ? src.indexOf('}', c.to) + 1 : c.to;
+    code += braced ? before.replace(/\{\s*$/, BRACED_COMMENT) : before;
+    at = braced ? src.indexOf('}', c.to) + 1 : c.to;
   }
-  return (code + src.slice(at)).replace(/\s+/g, '');
+  code += src.slice(at);
+  if (s.line === '#')
+    return code
+      .split('\n')
+      .map((l) => l.trimEnd())
+      .filter(Boolean)
+      .join('\n');
+  return code.replace(/\s+/g, '');
+}
+
+/** Whether two bare() results are the same code. */
+export function sameCode(before: string, now: string) {
+  let j = 0;
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] === BRACED_COMMENT) {
+      if (now[j] === BRACED_COMMENT) j++;
+      else if (now.startsWith('{}', j)) j += 2;
+    } else if (before[i] !== now[j++]) return false;
+  }
+  return j === now.length;
 }
 
 type Listed = {
@@ -387,11 +425,35 @@ const git = (...args: string[]) =>
   spawnSync('git', ['-c', 'core.quotePath=false', ...args], {
     cwd: root(),
     encoding: 'utf8',
+    maxBuffer: 1024 ** 3,
   });
+const PLAIN_DIFF = ['--no-ext-diff', '--no-color'];
 
-function changedLines(file: string, since: string) {
-  if (git('cat-file', '-e', `${since}:${file}`).status !== 0) return null;
-  const diff = git('diff', '-U0', '--no-renames', since, '--', file).stdout;
+/** Where each file this branch moved used to be. */
+function movedFrom(since: string) {
+  const moved = new Map<string, string>();
+  for (const line of git(
+    'diff',
+    '--name-status',
+    '-M',
+    ...PLAIN_DIFF,
+    since,
+  ).stdout.split('\n')) {
+    const [status, from, to] = line.split('\t');
+    if (status?.startsWith('R')) moved.set(to, from);
+  }
+  return moved;
+}
+
+function changedLines(file: string, since: string, was = file) {
+  if (git('cat-file', '-e', `${since}:${was}`).status !== 0) return null;
+  const diff = git(
+    'diff',
+    '-U0',
+    ...PLAIN_DIFF,
+    `${since}:${was}`,
+    file,
+  ).stdout;
   const ranges: [number, number][] = [];
   for (const m of diff.matchAll(/^@@ -\S+ \+(\d+)(?:,(\d+))? @@/gm)) {
     const count = m[2] === undefined ? 1 : Number(m[2]);
@@ -406,7 +468,8 @@ function list(paths: string[]) {
   const keep = c.comments.keep.map((re) => new RegExp(re));
   let since = '';
   let files: string[];
-  if (paths.length)
+  let moved = new Map<string, string>();
+  if (paths.length) {
     files = git(
       'ls-files',
       '--full-name',
@@ -418,7 +481,11 @@ function list(paths: string[]) {
     )
       .stdout.split('\n')
       .filter(Boolean);
-  else {
+    if (!files.length) {
+      console.error(`No files here match ${paths.join(', ')}.`);
+      process.exit(1);
+    }
+  } else {
     since = output(['git', 'merge-base', c.base, 'HEAD']);
     if (!since) {
       console.error(
@@ -427,6 +494,7 @@ function list(paths: string[]) {
       process.exit(1);
     }
     files = changedFiles();
+    moved = movedFrom(since);
   }
   const listed: Listed[] = [];
   const unread: string[] = [];
@@ -438,9 +506,9 @@ function list(paths: string[]) {
       unread.push(file);
       continue;
     }
-    const ranges = since ? changedLines(file, since) : null;
+    const ranges = since ? changedLines(file, since, moved.get(file)) : null;
     const high = tier([file]).tier === 'High';
-    for (const comment of scan(readFileSync(path, 'utf8'), syntax)) {
+    for (const comment of scan(readFileSync(path, 'utf8'), syntax, keep)) {
       if (
         ranges &&
         !ranges.some(([a, b]) => comment.line <= b && comment.end >= a)
@@ -496,7 +564,13 @@ function print({ listed, unread, scope }: ReturnType<typeof list>) {
 
 function onlyComments() {
   const changed = [
-    ...git('diff', '--name-only', '--no-renames', 'HEAD').stdout.split('\n'),
+    ...git(
+      'diff',
+      '--name-only',
+      '--no-renames',
+      ...PLAIN_DIFF,
+      'HEAD',
+    ).stdout.split('\n'),
     ...git(
       'ls-files',
       '--others',
@@ -526,11 +600,15 @@ function onlyComments() {
     }
     before += scan(old.stdout, syntax).length;
     after += scan(now, syntax).length;
-    if (bare(old.stdout, syntax) !== bare(now, syntax)) touched.push(file);
+    if (!sameCode(bare(old.stdout, syntax), bare(now, syntax)))
+      touched.push(file);
   }
   if (touched.length) {
     console.log('✗ More than comments changed since the last commit:');
     for (const f of touched) console.log(`  ${f}`);
+    console.log(
+      'Read `git diff` for each. A deleted comment can leave an empty pair of braces or a moved line that this script takes for a code change.',
+    );
     process.exit(1);
   }
   console.log(
@@ -540,6 +618,15 @@ function onlyComments() {
 
 if (process.argv[1] && resolve(process.argv[1]).endsWith('comments.ts')) {
   const args = process.argv.slice(2);
+  const unknown = args.find(
+    (a) => a.startsWith('-') && a !== '--json' && a !== '--only-comments',
+  );
+  if (unknown) {
+    console.error(
+      `Unknown option ${unknown}. Usage: comments.ts [--json] [paths], or comments.ts --only-comments`,
+    );
+    process.exit(1);
+  }
   if (args.includes('--only-comments')) onlyComments();
   else {
     const found = list(args.filter((a) => a !== '--json'));
