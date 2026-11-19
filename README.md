@@ -123,7 +123,7 @@ pr-proof works with anything that builds to static HTML: Astro, Vite, Next.js st
 
 ## Contributing
 
-Each skill is installed on its own, so it carries its own copy of the shared code. Edit `shared/`, then run `bun run sync`. `bun run check` checks the copies match, type-checks and runs the tests.
+Each skill is installed on its own, so it carries its own copy of the shared code. Edit `shared/`, then run `bun run sync`. `bun run check` checks the copies match, type-checks and runs the tests. Commits and PR titles start with a gitmoji, like `✨ feat(pr-proof): …`: the repo's own `skills.config.ts` sets it, and pr-writing's `check.ts` checks the commits before a push, and a title when it's run with `--title`.
 
 ## License
 
