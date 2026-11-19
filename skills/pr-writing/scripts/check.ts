@@ -5,6 +5,7 @@
 //
 //   bun scripts/check.ts           stops at a bad branch name or commit first
 //   bun scripts/check.ts --rerun   runs the checks even if this code passed
+//   bun scripts/check.ts --title "<PR title>"   checks only the PR's title
 //
 // The checks are slow, so they run only once the quick problems are fixed,
 // and not again on code they already passed: a reworded commit doesn't
@@ -56,6 +57,20 @@ const format = FORMATS[c.commits] ?? {
   re: new RegExp(c.commits, 'u'),
   example: c.commits,
 };
+// A squash merge makes the PR's title the commit subject on the base branch.
+const titleAt = process.argv.indexOf('--title');
+if (titleAt > 0) {
+  const title = process.argv[titleAt + 1] ?? '';
+  if (!format.re.test(title)) {
+    console.log(
+      `✗ PR title "${title}": write it as "${format.example}". A squash merge makes it the commit subject.`,
+    );
+    process.exit(1);
+  }
+  console.log('✓ The PR title follows the commit format.');
+  process.exit(0);
+}
+
 for (const subject of subjects())
   if (!format.re.test(subject))
     problems.push(`commit "${subject}": write it as "${format.example}"`);
