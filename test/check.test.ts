@@ -144,5 +144,10 @@ test('check.ts --title: the PR title takes the commit format', () => {
   expect(out.stdout).toContain('write it as "<gitmoji> type(scope): message"');
   out = bun(dir, CHECK, '--title', '✨ feat(export): add CSV');
   expect(out.status).toBe(0);
-  expect(out.stdout).toContain('✓ The PR title follows the commit format.');
+  expect(out.stdout).toContain(
+    '✓ PR title "✨ feat(export): add CSV" follows the commit format.',
+  );
+  out = bun(dir, CHECK, '--title=feat(export): add CSV');
+  expect(out.status).toBe(1);
+  expect(out.stdout).toContain('✗ PR title "feat(export): add CSV"');
 });
