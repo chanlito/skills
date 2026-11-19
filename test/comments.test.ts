@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
@@ -285,6 +285,23 @@ test('comments.ts: a moved file lists only the comments added to it', () => {
   const out = run(dir).stdout;
   expect(out).toContain('New.');
   expect(out).not.toContain('Old');
+  expect(out).toContain('1 comment on lines this branch changed, in 1 file');
+});
+
+test('comments.ts: a file named like a git option is read as a file', () => {
+  const dir = repo({
+    'skills.config.json': JSON.stringify({ lessons: 'off' }),
+    '--output=kept.ts': 'export const a = 1;\n',
+    'kept.ts': 'export const kept = 1;\n',
+  });
+  write(dir, { '--output=kept.ts': '// New.\nexport const a = 1;\n' });
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-qm', 'feat: more');
+  const out = run(dir).stdout;
+  expect(readFileSync(join(dir, 'kept.ts'), 'utf8')).toBe(
+    'export const kept = 1;\n',
+  );
+  expect(out).toContain('New.');
   expect(out).toContain('1 comment on lines this branch changed, in 1 file');
 });
 

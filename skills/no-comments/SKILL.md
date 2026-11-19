@@ -48,7 +48,7 @@ It fails when more than comments and spacing changed since the last commit, and 
 - **Deleted, though a keep rule fits** (a licence header, a line a tool reads): put it back.
 - **A flag about code outside the change**, or one that claims something the code doesn't show: drop the flag.
 
-When most of the report is wrong, `git restore .` and run one more fresh reviewer, telling it what the first got wrong. When the second is wrong too, restore again, stop, and report that the pass didn't hold (step 7).
+When most of the report is wrong, undo its deletions (`git restore` with the files it changed, so nobody else's uncommitted work in the checkout goes with them) and run one more fresh reviewer, telling it what the first got wrong. When the second is wrong too, restore again, stop, and report that the pass didn't hold (step 7).
 
 Run the project's formatter and commit the deletions on their own, so the person reviewing the PR can read them apart from the change.
 

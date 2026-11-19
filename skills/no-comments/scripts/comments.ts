@@ -329,7 +329,9 @@ const WORKAROUND =
   /\b(workaround|work around|hack|hacky|kludge|for now|temporary|temporarily|quick fix|until we|too risky|should be fine|somehow|not sure why|no idea why|for some reason|just in case|to be safe)/i;
 const LINK = /https?:\/\/|#\d+\b|\bRFC ?\d+/;
 const DECORATION = /^[-=*#~_+<>|/\s]*$/;
-const RULER = /^[-=*#~_]{3,}|[-=*#~_]{3,}$/;
+const RULER = /^[-=*#~_]{3}$/;
+const ruled = (line: string) =>
+  RULER.test(line.slice(0, 3)) || RULER.test(line.slice(-3));
 const STATEMENT =
   /^(const|let|var|return|import|export|await|if|for|while|function|class)\b.*[=(){};]/;
 
@@ -360,8 +362,7 @@ export function tags(c: Comment, keep: RegExp[] = []): Tag[] {
   if (WORKAROUND.test(t)) found.push('workaround');
   if (LINK.test(t)) found.push('link');
   if (!c.doc && looksLikeCode(t)) found.push('code');
-  if (DECORATION.test(t) || t.split('\n').some((l) => RULER.test(l)))
-    found.push('banner');
+  if (DECORATION.test(t) || t.split('\n').some(ruled)) found.push('banner');
   if (!c.doc && (t.length > 300 || t.split('\n').length > 5))
     found.push('long');
   return found;
@@ -449,7 +450,7 @@ function changedLines(file: string, since: string, was = file) {
     '-U0',
     ...PLAIN_DIFF,
     `${since}:${was}`,
-    file,
+    `./${file}`,
   ).stdout;
   const ranges: [number, number][] = [];
   for (const m of diff.matchAll(/^@@ -\S+ \+(\d+)(?:,(\d+))? @@/gm)) {
