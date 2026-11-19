@@ -111,6 +111,18 @@ export type Config = {
     /** Files never checked, such as examples of typing mistakes. */
     ignore: string[];
   };
+  comments: {
+    /**
+     * Files whose comments no-comments leaves alone (globs), such as
+     * generated or vendored code. A project's list adds to the defaults.
+     */
+    ignore: string[];
+    /**
+     * Regular expressions for comments a tool or a project rule reads, so
+     * no-comments lists them as kept.
+     */
+    keep: string[];
+  };
 };
 
 export const DEFAULTS: Config = {
@@ -267,6 +279,20 @@ export const DEFAULTS: Config = {
     ],
     ignore: [],
   },
+  comments: {
+    ignore: [
+      // A tool writes these, and its next run puts the comments back.
+      '**/generated/**',
+      '**/*.gen.*',
+      '**/*.generated.*',
+      '**/__snapshots__/**',
+      '**/*.min.*',
+      // Someone else's code.
+      '**/node_modules/**',
+      '**/vendor/**',
+    ],
+    keep: [],
+  },
 };
 
 export const CONFIG_FILE = 'skills.config.ts';
@@ -323,6 +349,9 @@ export function config(): Config {
   if (t.defaults)
     for (const k of ['high', 'medium', 'low'] as const)
       t[k] = [...new Set([...DEFAULTS.tiers[k], ...t[k]])];
+  merged.comments.ignore = [
+    ...new Set([...DEFAULTS.comments.ignore, ...merged.comments.ignore]),
+  ];
   return (cached = merged);
 }
 
