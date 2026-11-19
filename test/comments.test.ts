@@ -162,7 +162,6 @@ function write(dir: string, files: Record<string, string>) {
   }
 }
 
-/** A repo with `files` on origin/main and a feature branch checked out. */
 function repo(files: Record<string, string>) {
   const dir = mkdtempSync(join(tmpdir(), 'skills-comments-'));
   git(dir, 'init', '-q', '-b', 'main');

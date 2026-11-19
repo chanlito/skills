@@ -82,12 +82,9 @@ export function scan(src: string, s: Syntax): Comment[] {
   const n = src.length;
   let i = 0;
   let line = 1;
-  // The last two things that weren't space or a comment ('a' for a word),
-  // to tell a regular expression from a division.
   let prev = '';
   let prev2 = '';
   let word = '';
-  // How many braces are open inside each ${ } of a template literal.
   const holes: number[] = [];
   let quote = '';
   let regex = 0;
@@ -126,7 +123,6 @@ export function scan(src: string, s: Syntax): Comment[] {
       .split('\n')
       .map((l) => l.replace(/^\s*\*+ ?/, '').trim())
       .join('\n');
-  // Reads a template literal up to its closing backtick or its next ${.
   const template = () => {
     while (i < n) {
       const c = src[i];
@@ -184,7 +180,6 @@ export function scan(src: string, s: Syntax): Comment[] {
       } else {
         if (c === '\n') {
           line++;
-          // Only triple quotes and backticks carry on to the next line.
           if (quote.length === 1 && quote !== '`') quote = '';
         }
         i++;
@@ -266,10 +261,8 @@ export function scan(src: string, s: Syntax): Comment[] {
   return paragraphs(out);
 }
 
-/** A line a tool reads is its own comment, whatever is written around it. */
 const stands = (text: string) => TOOL.test(text) || SUPPRESSION.test(text);
 
-/** Line comments on lines that follow each other are one comment. */
 function paragraphs(comments: Comment[]) {
   const out: Comment[] = [];
   for (const c of comments) {
@@ -370,7 +363,6 @@ export function bare(src: string, s: Syntax) {
     at = c.to;
   }
   code = (code + src.slice(at)).replace(/\s+/g, '');
-  // A JSX comment leaves its braces behind.
   return s.js ? code.replaceAll('{}', '') : code;
 }
 
@@ -389,7 +381,6 @@ const git = (...args: string[]) =>
     encoding: 'utf8',
   });
 
-/** The lines of a file that differ from a commit, or null when it's all new. */
 function changedLines(file: string, since: string) {
   if (git('cat-file', '-e', `${since}:${file}`).status !== 0) return null;
   const diff = git('diff', '-U0', '--no-renames', since, '--', file).stdout;
@@ -495,7 +486,6 @@ function print({ listed, unread, scope }: ReturnType<typeof list>) {
     );
 }
 
-/** Fails when what's uncommitted changes more than comments. */
 function onlyComments() {
   const changed = [
     ...git('diff', '--name-only', '--no-renames', 'HEAD').stdout.split('\n'),
