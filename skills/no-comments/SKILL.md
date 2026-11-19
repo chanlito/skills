@@ -106,4 +106,4 @@ Each lesson is one line about what to do, not the story of what went wrong. Wher
 - `base`: the branch to compare with (`origin/main`).
 - `comments.ignore`: globs of files whose comments are left alone, added to the defaults (generated and vendored code; see `scripts/config.ts`).
 - `comments.keep`: regular expressions for comments a tool or a project rule reads, like `"^i18n:"`. They're listed as `tool` and stay.
-- `tiers.high`: which files make a change High (shared with pr-risks). In those, a comment the reviewer can't prove wrong stays.
+- `tiers.high`: which files make a change High (shared with pr-risks). In those, a comment whose reason the reviewer can't prove wrong stays (the `high` keep rule).

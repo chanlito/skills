@@ -28,6 +28,7 @@ A comment stays only when one of these fits. Name the rule in your report.
 | `link`     | A link to the issue, spec or RFC behind a constraint the code can't express.                                                                                                                                          |
 | `config`   | In a config file, why a setting or an entry is there. A list of paths or flags can't explain itself.                                                                                                                  |
 | `style`    | A suppression of a rule that is only about style, or is known to misfire, with its reason.                                                                                                                            |
+| `high`     | Only in a file marked High: a comment that says why the code is the way it is, when you can't prove it wrong.                                                                                                         |
 
 ### It goes
 
@@ -41,11 +42,11 @@ Everything else is deleted. The usual cases:
 - **Dead references:** to a doc, a file or a symbol that doesn't exist.
 - **A long defence of odd code.** Delete it and flag the code.
 
-When you're unsure whether a keep rule fits, it goes: git keeps the text, and the PR's diff shows every deletion to the person reviewing. A file marked High is the exception. There, a comment that claims something about how the code must behave, and that you can't prove wrong, stays under the keep rule `high`. Narration and the other usual cases go there too.
+When you're unsure whether a keep rule fits, it goes: git keeps the text, and the PR's diff shows every deletion to the person reviewing. In a file marked High, the keep rule `high` covers that doubt for a comment that gives a reason. Narration and the other usual cases go there too.
 
 ### It becomes a flag
 
-A flag means the comment was covering for the code. Name the exact function, variable or line, and say in one line what should change.
+A flag means the comment was covering for the code. Name the exact function, variable or line, and say in one line what should change. A comment that fits a flag is a flag, in a file marked High too.
 
 | Flag          | When                                                                                                                                      | The comment                                           |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |

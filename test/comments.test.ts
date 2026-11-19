@@ -32,6 +32,8 @@ test('scan: finds comments, and not what only looks like one', () => {
     'const jsx = <a href="//cdn">http://example.com {/* in JSX */}</a>;',
     'const done = <br />; // after a tag',
     "const text = <p>Don't {/* after an apostrophe */}</p>;",
+    "const long = 'one \\",
+    "two'; // after a string on two lines",
   ].join('\n');
   expect(texts('a.tsx', src)).toEqual([
     'the real one',
@@ -39,6 +41,7 @@ test('scan: finds comments, and not what only looks like one', () => {
     'in JSX',
     'after a tag',
     'after an apostrophe',
+    'after a string on two lines',
   ]);
   expect(read('a.tsx', src).map((c) => [c.line, c.end])).toEqual([
     [1, 1],
@@ -46,6 +49,7 @@ test('scan: finds comments, and not what only looks like one', () => {
     [7, 7],
     [8, 8],
     [9, 9],
+    [11, 11],
   ]);
 });
 
@@ -141,13 +145,16 @@ test('tags: what each comment looks like', () => {
   expect(tags(bang)).toEqual(['tool']);
   const [crate] = read('lib.rs', '//! Crate docs.\n');
   expect(tags(crate)).toEqual([]);
-  const keep = [/^i18n:/];
-  const notes = scan(
-    '// Shown on the receipt.\n// i18n: label\nconst a = 1;',
-    syntaxOf('a.ts')!,
-    keep,
-  );
-  expect(notes.map((c) => tags(c, keep).join(','))).toEqual(['', 'tool']);
+  const keep = [/^i18n:/, /^SAFETY:/];
+  const kept = (src: string) =>
+    read('a.ts', src).map((c) => tags(c, keep).join(','));
+  expect(kept('// Shown on the receipt.\n// i18n: label')).toEqual(['tool']);
+  expect(
+    kept('// SAFETY: the caller owns it,\n// and it outlives us.'),
+  ).toEqual(['tool']);
+  expect(
+    tagged('a.sh', '#!/usr/bin/env bash\n# Loops over the files.\nset -e\n'),
+  ).toEqual(['tool', '']);
 });
 
 test('bare: the same code with or without its comments', () => {
@@ -171,6 +178,12 @@ test('bare: the same code with or without its comments', () => {
     false,
   );
   expect(same('a.tsx', 'f({});', 'f();')).toBe(false);
+  const two =
+    'try { f(); } catch {\n  // one\n  // eslint-disable-next-line\n}';
+  expect(same('a.tsx', two, two.replace('  // one\n', ''))).toBe(true);
+  expect(same('a.tsx', '<p>{/* a */ /* b */}</p>', '<p>{/* b */}</p>')).toBe(
+    true,
+  );
   expect(same('a.tsx', 'f(); // x', 'f(); g();')).toBe(false);
 
   const py =
@@ -249,6 +262,9 @@ test('comments.ts: lists only what the branch changed, by config', () => {
   const typo = run(dir, 'src/nope.ts');
   expect(typo.status).toBe(1);
   expect(typo.stderr).toContain('No files here match');
+  const half = run(dir, 'src/a.ts', 'src/nope.ts');
+  expect(half.status).toBe(1);
+  expect(half.stderr).toContain('No files here match src/nope.ts.');
   expect(run(dir, '--help').status).toBe(1);
 });
 
